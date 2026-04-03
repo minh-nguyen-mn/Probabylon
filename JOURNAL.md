@@ -6,6 +6,40 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+```markdown
+## Tuần 1 — 03/04/2026
+
+### Đã làm
+- Kết nối và trao đổi định hướng với các thành viên trong nhóm
+- Nghiên cứu ~250 đề tài AI gợi ý để hiểu landscape
+- Brainstorm và đề xuất hướng đề tài mới:
+  - Multi-agent prediction markets cho decision making / investment
+- Thảo luận các use case tiềm năng: startup investment, public markets, general decision systems
+
+### Khó nhất tuần này
+- Khó khăn trong việc thu hẹp scope (startup vs public markets vs general decision system)
+- Ban đầu chưa rõ cách chuyển từ “AI prediction” sang “market-based decision system”
+
+### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | | |
+
+### Học được
+- Prediction market hiệu quả hơn prediction model thuần vì có incentive (trade vs predict)
+- Multi-agent system giúp mô phỏng nhiều góc nhìn (data, risk, adversarial)
+- Market price có thể xem như một xác suất được “calibrated” bởi competition
+
+### Nếu làm lại, sẽ làm khác
+- Xác định scope sớm hơn thay vì explore quá rộng
+- Nhanh chóng chuyển sang use case cụ thể để tránh abstract quá lâu
+
+### Kế hoạch tuần tới
+- Thống nhất đề tài và use case cuối cùng với nhóm
+- Thiết kế flow hệ thống (agents, trading mechanism, data pipeline)
+- Bắt đầu viết proposal chi tiết (problem, solution, architecture)
+```
+
 ## Template
 
 ```markdown
