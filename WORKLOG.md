@@ -5,6 +5,23 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 > Cập nhật **bất cứ khi nào** nhóm ra quyết định kỹ thuật quan trọng hoặc thay đổi hướng đi.
 
 ---
+### [ADR-1] Chọn hướng Multi-Agent Prediction Markets — 03/04/2026
+
+**Bối cảnh:** Nhóm cần chọn đề tài AI in action có tính ứng dụng cao. Các lựa chọn ban đầu bao gồm chatbot, recommendation system, và AI prediction models.
+
+**Các lựa chọn đã xem xét:**
+- **AI prediction model**: dễ triển khai nhưng output tĩnh, thiếu tính tương tác
+- **Decision support dashboard**: trực quan nhưng không xử lý tốt uncertainty
+- **Prediction market + multi-agent**: phức tạp hơn nhưng có cơ chế self-correcting
+
+**Quyết định:** Chọn hướng multi-agent prediction markets vì:
+- Có cơ chế incentive (agents trade → reveal belief thật)
+- Kết hợp được nhiều nguồn signal (data, news, reasoning)
+- Phù hợp với decision-making under uncertainty
+
+**Hệ quả:**  
+- Tăng độ phức tạp hệ thống (cần market mechanism + agent design)  
+- Cần xác định rõ use case và data source cho MVP 
 
 ## Template
 
