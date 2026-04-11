@@ -23,6 +23,58 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - Tăng độ phức tạp hệ thống (cần market mechanism + agent design)  
 - Cần xác định rõ use case và data source cho MVP 
 
+---
+
+### [ADR-2] Chuyển đổi sang Multi-Agent LLM & Hybrid Consensus — 10/04/2026
+
+**Bối cảnh:** Nhóm nhận thấy mô phỏng xác suất thuần túy thiếu tính thuyết phục và không tận dụng được khả năng lập luận của AI. Cần một cơ chế đánh giá năng lực thực sự của Agent và Influencer.
+
+**Các lựa chọn đã xem xét:**
+- **Option A (Cũ):** Dùng các hàm toán học mô phỏng hành vi dự đoán.
+- **Option B (Mới):** Dùng 5-10 LLM Agents khác nhau, kết hợp Synthetic Agents và cơ chế Upvote lập luận từ người dùng.
+
+**Quyết định:** Chọn Option B vì:
+- Tận dụng được khả năng Chain-of-Thought của các model lớn.
+- Tạo ra thị trường dự đoán minh bạch (người dùng hiểu "tại sao" AI chọn kết quả đó).
+- Có khả năng kiểm chứng (verifiability) thông qua lịch sử dự đoán.
+
+**Hệ quả:**  
+- Tăng chi phí API (cần gọi nhiều model cùng lúc).
+
+---
+
+### Sprint 2 — 04/04 → 11/04/2026
+
+| Task | Người làm | Deadline | Trạng thái |
+|---|---|---|---|
+| Thay thế simulation bằng LLM Agents | Nam | 08/04 | 🔄 Đang làm |
+| Thiết kế thuật toán tính Brier Score | Linh | 09/04 | 🔄 Đang làm |
+| UI: Dashboard hiển thị Reasoning của Agent | Minh | 11/04 | ✅ Xong |
+| Tích hợp Search Tool (Context Engineering) | Minh | 12/04 | 🔄 Đang làm |
+
+---
+
+### Brainstorm: Tăng độ tin cậy cho hệ thống (Trust Building) — 09/04/2026
+
+**Câu hỏi:** Làm sao để người dùng tin vào xác suất mà AI đưa ra khi dự án mới launch?
+
+**Các ý tưởng:**
+- **Ý tưởng 1:** Show lịch sử kết quả của 100 sự kiện gần nhất.
+- **Ý tưởng 2:** Cho phép người dùng nhấn "Peek" để xem nguồn dữ liệu mà AI đã thu thập được.
+- **Ý tưởng 3:** Hệ thống cấp "Reputation Score" cho những AI Agent có phong độ ổn định nhất.
+
+**Kết luận:** Thực hiện cả 3. Ưu tiên ý tưởng 1 để làm Landing Page thuyết phục nhà đầu tư/Coach.
+
+---
+
+### Quyết định kỹ thuật: Bỏ qua Large-scale RAG — 10/04/2026
+
+**Vấn đề:** Câu hỏi dự đoán quá đa dạng, không thể index toàn bộ internet vào Vector DB.
+
+**Giải pháp:** Sử dụng **On-demand Context Engineering**. Khi có câu hỏi, hệ thống sẽ trigger một Search Agent để lấy 3-5 snippets mới nhất, sau đó inject trực tiếp vào Prompt.
+
+**Ưu điểm:** Tiết kiệm tài nguyên, dữ liệu luôn mới (real-time), giảm nhiễu thông tin.
+
 ## Template
 
 ### Quyết định kỹ thuật

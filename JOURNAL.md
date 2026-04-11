@@ -6,7 +6,6 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
-```markdown
 ## Tuần 1 — 03/04/2026
 
 ### Đã làm
@@ -38,7 +37,37 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 - Thống nhất đề tài và use case cuối cùng với nhóm
 - Thiết kế flow hệ thống (agents, trading mechanism, data pipeline)
 - Bắt đầu viết proposal chi tiết (problem, solution, architecture)
-```
+
+---
+
+## Tuần 2 — 10/04/2026
+
+### Đã làm
+- Chuyển hướng sang hệ thống **Multi-Agent LLM** thực thụ (GPT-4, Claude, Gemini, Llama).
+- Thiết kế cơ chế **Dynamic Weighting** dựa trên hiệu suất quá khứ (Historical Performance) và điểm Brier Score.
+- Đề xuất tính năng **Hybrid Intelligence**: Người dùng có thể upvote lập luận (Reasoning) của AI và tham gia dự đoán độc lập để nhận incentive.
+- Nghiên cứu đối thủ và tài liệu liên quan (Thinking Machines, Bittensor, Wisdom of the Silicon Crowd).
+
+### Khó nhất tuần này
+- Giải quyết bài toán hội tụ xác suất (Convergence) khi số lượng Agent còn ít (giải pháp: dùng Synthetic Agents với đa dạng system prompts).
+- Thiết kế cơ chế Context Engineering để cung cấp dữ liệu On-demand cho Agents mà không làm nhiễu hệ thống (Noise).
+
+### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Gemini | Tư vấn kiến trúc Multi-Agent,  cập nhật lộ trình sản phẩm. | Chốt được hướng đi về mặt kỹ thuật. |
+
+### Học được
+- Việc cho người dùng upvote lý luận của AI quan trọng hơn việc chỉ cho họ thấy kết quả số đơn thuần.
+- RAG quy mô lớn không hiệu quả bằng việc search-on-demand đối với các câu hỏi đa dạng lĩnh vực.
+
+### Nếu làm lại, sẽ làm khác
+- Đã có thể bắt đầu tích hợp Search API sớm hơn để Agents bớt ảo giác trong các câu hỏi thực tế.
+
+### Kế hoạch tuần tới
+- Hiện thực hóa lớp **Classifier** để phân loại và điều hướng câu hỏi (Routing).
+- Tích hợp Search Tool (Tavily/Serper) vào Agent Loop để cung cấp context thời gian thực.
+- Viết module tính toán Brier Score để bắt đầu chạy Backtest cho các sự kiện cũ.
 
 ## Template
 
