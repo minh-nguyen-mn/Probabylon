@@ -1,14 +1,21 @@
-# Starter Code App
+# Probabylon
 
-A template for building AI Agents in Python.
+Probabylon is a production-ready, distributed multi-agent prediction market engine for collective AI forecasting.
 
 ## Structure
 
 ```
-├── src/
-│   ├── agent.py        # Main agent loop
-│   ├── tools.py        # Tool definitions
-│   └── config.py       # Configuration
+├── apps/web/                  # Next.js 15 dashboard (Zustand + Recharts + Tailwind)
+├── services/api/              # FastAPI async backend
+│   ├── app/api                # HTTP routes
+│   ├── app/db                 # SQLAlchemy models and session
+│   ├── app/markets            # LMSR engine
+│   ├── app/llm                # Provider-agnostic LLM abstraction
+│   ├── app/schemas            # Pydantic v2 contracts
+│   └── alembic                # DB migrations
+├── services/worker/           # Celery distributed simulation worker
+├── infra/                     # bootstrap SQL / infra config
+├── src/                       # legacy local MVP modules (kept for compatibility)
 ├── scripts/
 │   ├── setup_hooks.sh  # One-time hook installer
 │   ├── log_hook.py     # AI tool hook handler
@@ -40,7 +47,7 @@ cp .env.example .env
 
 Open `.env` and fill in your `ANTHROPIC_API_KEY`. The `AI_LOG_*` variables are pre-filled.
 
-### 3. Run
+### 3. Run distributed stack
 
 ```bash
 python -m venv venv
@@ -48,7 +55,40 @@ source venv/bin/activate       # Linux/Mac
 # or: venv\Scripts\activate    # Windows
 
 pip install -r requirements.txt
-python -m src.agent
+docker compose up --build
+```
+
+Services:
+
+- `web` on `http://localhost:3000`
+- `api` on `http://localhost:8000`
+- websocket stream on `ws://localhost:8000/ws/markets`
+- distributed worker via Celery + Redis
+- PostgreSQL durable storage
+
+### 4. API quickstart
+
+Create market:
+
+```bash
+curl -X POST http://localhost:8000/api/markets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question":"Will AGI exist before 2035?",
+    "description":"General-purpose AGI before deadline",
+    "resolution_criteria":"YES if broad AGI is recognized by 2034-12-31 UTC",
+    "category":"technology",
+    "initial_probability":0.5,
+    "lmsr_b":75
+  }'
+```
+
+Start simulation:
+
+```bash
+curl -X POST http://localhost:8000/api/simulations/start \
+  -H "Content-Type: application/json" \
+  -d '{"market_id":"<id>","rounds":8,"max_agents":24}'
 ```
 
 ## Weekly Journal

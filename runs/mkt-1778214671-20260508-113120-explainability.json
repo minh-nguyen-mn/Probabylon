@@ -1,0 +1,170 @@
+[
+  {
+    "timestamp": "2026-05-08T11:31:12.818663",
+    "round": 1,
+    "agent": "Macro Optimist",
+    "worldview": "long-run innovation, growth and institutional adaptation",
+    "risk_tolerance": 0.85,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? long-run innovation, growth and institutional adaptation",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.5,
+    "estimated_probability": 0.6055086375540217,
+    "target_probability": 0.5704177448528298,
+    "post_probability": 0.5704177448528298,
+    "confidence": 0.8169529564932044,
+    "spend": 11.384614620298514,
+    "shares_delta": 21.266680596563845,
+    "capital_remaining": 88.61538537970148,
+    "rationale": "Fallback reasoner: worldview='long-run innovation, growth and institutional adaptation', evidence='trend continuation and technological acceleration', estimated p=0.61 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:13.831696",
+    "round": 1,
+    "agent": "Skeptical Analyst",
+    "worldview": "base rates, historical failures, and structural friction",
+    "risk_tolerance": 0.35,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? base rates, historical failures, and structural friction",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.5704177448528298,
+    "estimated_probability": 0.5026525313853547,
+    "target_probability": 0.5437143560574182,
+    "post_probability": 0.5437143560574182,
+    "confidence": 0.6277399726654687,
+    "spend": 0.0,
+    "shares_delta": -8.118805399990357,
+    "capital_remaining": 100.0,
+    "rationale": "Fallback reasoner: worldview='base rates, historical failures, and structural friction', evidence='debunking evidence and downside scenarios', estimated p=0.50 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:15.004018",
+    "round": 1,
+    "agent": "Cultural Signal Reader",
+    "worldview": "media dynamics, memes, social diffusion and narratives",
+    "risk_tolerance": 0.6,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? media dynamics, memes, social diffusion and narratives",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.5437143560574182,
+    "estimated_probability": 0.6601225848663497,
+    "target_probability": 0.6140789506011078,
+    "post_probability": 0.6140789506011077,
+    "confidence": 0.7774728894631195,
+    "spend": 12.561465918476642,
+    "shares_delta": 21.68892659941646,
+    "capital_remaining": 87.43853408152336,
+    "rationale": "Fallback reasoner: worldview='media dynamics, memes, social diffusion and narratives', evidence='social momentum and attention shifts', estimated p=0.66 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:16.051717",
+    "round": 1,
+    "agent": "Quant Bayesian",
+    "worldview": "probabilistic calibration and conservative priors",
+    "risk_tolerance": 0.5,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? probabilistic calibration and conservative priors",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.6140789506011077,
+    "estimated_probability": 0.6864743695598338,
+    "target_probability": 0.6417029936640457,
+    "post_probability": 0.6417029936640457,
+    "confidence": 0.6177149016374931,
+    "spend": 5.570290816584752,
+    "shares_delta": 8.87044576897609,
+    "capital_remaining": 94.42970918341524,
+    "rationale": "Fallback reasoner: worldview='probabilistic calibration and conservative priors', evidence='cross-source consistency and quantified uncertainty', estimated p=0.69 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:16.966638",
+    "round": 2,
+    "agent": "Macro Optimist",
+    "worldview": "long-run innovation, growth and institutional adaptation",
+    "risk_tolerance": 0.85,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? long-run innovation, growth and institutional adaptation",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.6417029936640457,
+    "estimated_probability": 0.7472116312180674,
+    "target_probability": 0.7121207385168755,
+    "post_probability": 0.7121207385168755,
+    "confidence": 0.8169529564932044,
+    "spend": 16.411583086108596,
+    "shares_delta": 24.2207258598916,
+    "capital_remaining": 72.20380229359289,
+    "rationale": "Fallback reasoner: worldview='long-run innovation, growth and institutional adaptation', evidence='trend continuation and technological acceleration', estimated p=0.75 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:17.863415",
+    "round": 2,
+    "agent": "Skeptical Analyst",
+    "worldview": "base rates, historical failures, and structural friction",
+    "risk_tolerance": 0.35,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? base rates, historical failures, and structural friction",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.7121207385168755,
+    "estimated_probability": 0.6443555250494004,
+    "target_probability": 0.685417349721464,
+    "post_probability": 0.685417349721464,
+    "confidence": 0.6277399726654687,
+    "spend": 0.0,
+    "shares_delta": -9.519392289374814,
+    "capital_remaining": 100.0,
+    "rationale": "Fallback reasoner: worldview='base rates, historical failures, and structural friction', evidence='debunking evidence and downside scenarios', estimated p=0.64 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:18.932254",
+    "round": 2,
+    "agent": "Cultural Signal Reader",
+    "worldview": "media dynamics, memes, social diffusion and narratives",
+    "risk_tolerance": 0.6,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? media dynamics, memes, social diffusion and narratives",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.685417349721464,
+    "estimated_probability": 0.8018255785303954,
+    "target_probability": 0.7557819442651535,
+    "post_probability": 0.7557819442651535,
+    "confidence": 0.7774728894631195,
+    "spend": 18.988900750598475,
+    "shares_delta": 26.31827415037585,
+    "capital_remaining": 68.44963333092488,
+    "rationale": "Fallback reasoner: worldview='media dynamics, memes, social diffusion and narratives', evidence='social momentum and attention shifts', estimated p=0.80 from sparse external snippets."
+  },
+  {
+    "timestamp": "2026-05-08T11:31:20.035433",
+    "round": 2,
+    "agent": "Quant Bayesian",
+    "worldview": "probabilistic calibration and conservative priors",
+    "risk_tolerance": 0.5,
+    "research_query": "Will aliens publicly contact humanity before GTA 7 releases? probabilistic calibration and conservative priors",
+    "research_snippets": [
+      "No strong external snippets found; fallback to prior + worldview assumptions."
+    ],
+    "research_urls": [],
+    "pre_probability": 0.7557819442651535,
+    "estimated_probability": 0.8281773632238796,
+    "target_probability": 0.7834059873280915,
+    "post_probability": 0.7834059873280914,
+    "confidence": 0.6177149016374931,
+    "spend": 9.00276040454213,
+    "shares_delta": 11.695122621048867,
+    "capital_remaining": 85.42694877887311,
+    "rationale": "Fallback reasoner: worldview='probabilistic calibration and conservative priors', evidence='cross-source consistency and quantified uncertainty', estimated p=0.83 from sparse external snippets."
+  }
+]

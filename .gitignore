@@ -11,6 +11,8 @@ build/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+node_modules/
+.next/
 
 # OS
 .DS_Store

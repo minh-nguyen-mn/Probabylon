@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+from datetime import datetime
+from uuid import uuid4
+
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Market(Base):
+    __tablename__ = "markets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    question: Mapped[str] = mapped_column(String(500))
+    description: Mapped[str] = mapped_column(Text, default="")
+    resolution_criteria: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(120), default="general")
+    initial_probability: Mapped[float] = mapped_column(Float, default=0.5)
+    current_probability: Mapped[float] = mapped_column(Float, default=0.5)
+    lmsr_b: Mapped[float] = mapped_column(Float, default=75.0)
+    q_yes: Mapped[float] = mapped_column(Float, default=0.0)
+    q_no: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(50), default="open")
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    trades: Mapped[list["Trade"]] = relationship(back_populates="market")
+
+
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    persona: Mapped[str] = mapped_column(Text)
+    system_prompt: Mapped[str] = mapped_column(Text)
+    memory: Mapped[dict] = mapped_column(JSON, default=dict)
+    capital: Mapped[float] = mapped_column(Float, default=100.0)
+    reputation: Mapped[float] = mapped_column(Float, default=0.5)
+    calibration_score: Mapped[float] = mapped_column(Float, default=0.0)
+    risk_profile: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Trade(Base):
+    __tablename__ = "trades"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    market_id: Mapped[str] = mapped_column(ForeignKey("markets.id"), index=True)
+    agent_id: Mapped[str] = mapped_column(String(36), index=True)
+    confidence: Mapped[float] = mapped_column(Float)
+    estimated_probability: Mapped[float] = mapped_column(Float, default=0.5)
+    spend: Mapped[float] = mapped_column(Float)
+    shares_delta: Mapped[float] = mapped_column(Float, default=0.0)
+    round_index: Mapped[int] = mapped_column(Integer, default=1)
+    pre_probability: Mapped[float] = mapped_column(Float)
+    post_probability: Mapped[float] = mapped_column(Float)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    research_history: Mapped[list] = mapped_column(JSON, default=list)
+    active_positions: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    market: Mapped[Market] = relationship(back_populates="trades")
