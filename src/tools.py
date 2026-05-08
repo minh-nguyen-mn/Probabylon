@@ -1,76 +1,49 @@
 """
-Tool definitions for the agent.
-Add new tools by creating a function and registering it in the TOOLS dict.
+General utility tools for Probabylon.
+The market engine itself is implemented in dedicated modules.
 """
+
+from __future__ import annotations
+
+import ast
+import operator
+from collections.abc import Callable
 
 import httpx
 
-
-def search_web(query: str) -> str:
-    """Search for information on the web (placeholder)."""
-    return f"Search results for: {query}"
-
-
-def calculate(expression: str) -> str:
-    """Evaluate a math expression."""
-    try:
-        result = eval(expression, {"__builtins__": {}})
-        return str(result)
-    except Exception as e:
-        return f"Error: {e}"
-
-
-def fetch_url(url: str) -> str:
-    """Fetch content from a URL."""
-    try:
-        resp = httpx.get(url, timeout=10, follow_redirects=True)
-        return resp.text[:2000]
-    except Exception as e:
-        return f"Error: {e}"
-
-
-# Tool registry - the agent uses this dict
-TOOLS = {
-    "search_web": {
-        "fn": search_web,
-        "description": "Search for information on the web",
-        "parameters": {"query": "string"},
-    },
-    "calculate": {
-        "fn": calculate,
-        "description": "Evaluate a math expression",
-        "parameters": {"expression": "string"},
-    },
-    "fetch_url": {
-        "fn": fetch_url,
-        "description": "Fetch content from a URL",
-        "parameters": {"url": "string"},
-    },
+OPS: dict[type, Callable[[float, float], float]] = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
 }
 
 
-def get_tool_schemas() -> list[dict]:
-    """Return tool schemas in Anthropic API format."""
-    schemas = []
-    for name, tool in TOOLS.items():
-        schemas.append({
-            "name": name,
-            "description": tool["description"],
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    k: {"type": v, "description": k}
-                    for k, v in tool["parameters"].items()
-                },
-                "required": list(tool["parameters"].keys()),
-            },
-        })
-    return schemas
+def calculate(expression: str) -> str:
+    """Safely evaluate simple arithmetic expressions."""
+
+    def eval_node(node: ast.AST) -> float:
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return float(node.value)
+        if isinstance(node, ast.BinOp) and type(node.op) in OPS:
+            return OPS[type(node.op)](eval_node(node.left), eval_node(node.right))
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            return -eval_node(node.operand)
+        raise ValueError("Unsupported expression")
+
+    try:
+        parsed = ast.parse(expression, mode="eval")
+        return str(eval_node(parsed.body))
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
-def execute_tool(name: str, args: dict) -> str:
-    """Execute a tool by name."""
-    tool = TOOLS.get(name)
-    if not tool:
-        return f"Tool '{name}' does not exist"
-    return tool["fn"](**args)
+def fetch_url(url: str) -> str:
+    """Fetch text content from a URL."""
+    try:
+        response = httpx.get(url, timeout=10, follow_redirects=True)
+        response.raise_for_status()
+        return response.text[:3000]
+    except Exception as exc:
+        return f"Error: {exc}"

@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS events_bootstrap (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    note TEXT NOT NULL
+);
