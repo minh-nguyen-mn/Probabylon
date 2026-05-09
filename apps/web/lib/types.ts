@@ -14,6 +14,7 @@ export type TradeRow = {
   id: number;
   market_id: string;
   agent_id: string;
+  agent_title?: string;
   confidence: number;
   estimated_probability: number;
   spend: number;
@@ -23,6 +24,7 @@ export type TradeRow = {
   round_index: number;
   created_at: string;
   shares_delta?: number;
+  direction?: "bullish" | "bearish";
 };
 
 export type AgentRow = {
@@ -31,7 +33,13 @@ export type AgentRow = {
   capital: number;
   reputation: number;
   calibration_score: number;
-  risk_profile: { risk?: number };
+  risk_profile: {
+    risk?: number;
+    style?: string;
+    worldview?: string;
+    reflexivity?: number;
+    contrarian?: number;
+  };
 };
 
 export type DashboardPayload = {

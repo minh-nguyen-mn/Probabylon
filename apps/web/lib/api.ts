@@ -24,10 +24,10 @@ export async function createMarket(payload: {
   category: string;
   resolution_criteria: string;
   expires_at: string;
-  initial_probability: number;
-  rounds: number;
-  max_agents: number;
-  lmsr_b: number;
+  initial_probability?: number;
+  rounds?: number;
+  max_agents?: number;
+  lmsr_b?: number;
 }): Promise<any> {
   const res = await fetch(`${API_BASE}/markets`, {
     method: "POST",
