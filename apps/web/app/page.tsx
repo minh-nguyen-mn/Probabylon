@@ -38,6 +38,7 @@ export default function Page() {
       ws.onmessage = (evt) => {
         try {
           const payload = JSON.parse(evt.data);
+          console.log("[Probabylon WS event]", payload);
           applyTradeEvent(payload);
           if (payload.type === "market_created") {
             refresh().catch(console.error);
@@ -53,6 +54,28 @@ export default function Page() {
       ws?.close();
     };
   }, [applyTradeEvent, setDashboard, setWsState]);
+
+  useEffect(() => {
+    console.log("[Probabylon Dashboard] markets", markets);
+  }, [markets]);
+
+  useEffect(() => {
+    console.log(
+      "[Probabylon Agents]",
+      agents.map((agent) => ({
+        id: agent.id,
+        persona: agent.persona,
+        capital: agent.capital,
+        reputation: agent.reputation,
+        calibration_score: agent.calibration_score,
+      }))
+    );
+  }, [agents]);
+
+  useEffect(() => {
+    if (!trades.length) return;
+    console.log("[Probabylon Trades]", trades.slice(0, 10));
+  }, [trades]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_35%),linear-gradient(180deg,_#09090b,_#111827_50%,_#020617)] text-zinc-100 p-4 md:p-6 space-y-4">

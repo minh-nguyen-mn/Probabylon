@@ -27,6 +27,17 @@ export type TradeRow = {
   direction?: "bullish" | "bearish";
 };
 
+export type TradeNotification = {
+  id: number;
+  market_id: string;
+  market_question?: string;
+  agent_title: string;
+  direction: "bullish" | "bearish";
+  probability: number;
+  spend: number;
+  created_at: string;
+};
+
 export type AgentRow = {
   id: string;
   persona: string;

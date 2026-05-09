@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { DashboardPayload, MarketRow, TradeRow } from "./types";
+import { DashboardPayload, MarketRow, TradeNotification, TradeRow } from "./types";
 
 type WSState = "connecting" | "connected" | "disconnected";
 
@@ -8,16 +8,35 @@ type AppState = {
   markets: MarketRow[];
   trades: TradeRow[];
   agents: DashboardPayload["active_agents"];
+  notifications: TradeNotification[];
   setDashboard: (payload: DashboardPayload) => void;
   applyTradeEvent: (payload: any) => void;
+  pushTradeNotification: (payload: any) => void;
+  dismissNotification: (id: number) => void;
   setWsState: (state: WSState) => void;
 };
+
+function buildNotification(event: any, question?: string): TradeNotification | null {
+  if (event.type !== "trade") return null;
+  const direction = event.direction === "bearish" ? "bearish" : "bullish";
+  return {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    market_id: event.market_id,
+    market_question: question || event.question,
+    agent_title: event.agent_title || event.agent_id || "Unknown agent",
+    direction,
+    probability: Number(event.probability ?? 0.5),
+    spend: Number(event.spend || 0),
+    created_at: new Date().toISOString(),
+  };
+}
 
 export const useAppStore = create<AppState>((set) => ({
   wsState: "connecting",
   markets: [],
   trades: [],
   agents: [],
+  notifications: [],
   setDashboard: (payload) => set({ markets: payload.markets, trades: payload.recent_trades, agents: payload.active_agents }),
   applyTradeEvent: (event) =>
     set((state) => {
@@ -94,6 +113,8 @@ export const useAppStore = create<AppState>((set) => ({
         shares_delta: Number(event.shares_delta || 0),
         direction: event.direction,
       };
+      const linkedMarket = state.markets.find((market) => market.id === event.market_id);
+      const notification = buildNotification(event, linkedMarket?.question);
 
       return {
         ...state,
@@ -114,7 +135,23 @@ export const useAppStore = create<AppState>((set) => ({
               ...markets,
             ],
         trades: [trade, ...state.trades].slice(0, 300),
+        notifications: notification ? [notification, ...state.notifications].slice(0, 4) : state.notifications,
       };
     }),
+  pushTradeNotification: (event) =>
+    set((state) => {
+      const linkedMarket = state.markets.find((market) => market.id === event.market_id);
+      const notification = buildNotification(event, linkedMarket?.question);
+      if (!notification) return state;
+      return {
+        ...state,
+        notifications: [notification, ...state.notifications].slice(0, 4),
+      };
+    }),
+  dismissNotification: (id) =>
+    set((state) => ({
+      ...state,
+      notifications: state.notifications.filter((notification) => notification.id !== id),
+    })),
   setWsState: (wsState) => set({ wsState }),
 }));

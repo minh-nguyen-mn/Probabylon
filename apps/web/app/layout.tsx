@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ReactNode } from "react";
+import { TradeNotifications } from "../components/trade-notifications";
 
 export const metadata = {
   title: "Probabylon",
@@ -9,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <TradeNotifications />
+        {children}
+      </body>
     </html>
   );
 }

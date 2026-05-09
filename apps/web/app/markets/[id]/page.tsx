@@ -3,10 +3,12 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getMarketDetail } from "../../../lib/api";
+import { useAppStore } from "../../../lib/store";
 
 export default function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [payload, setPayload] = useState<any>(null);
+  const pushTradeNotification = useAppStore((state) => state.pushTradeNotification);
 
   useEffect(() => {
     let disposed = false;
@@ -33,6 +35,8 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
         try {
           const event = JSON.parse(evt.data);
           if (event.type !== "trade" || event.market_id !== id) return;
+          console.log("[Probabylon Market WS trade]", event);
+          pushTradeNotification({ ...event, question: payload?.market?.question });
           setPayload((prev: any) => {
             if (!prev) return prev;
             const trade = {
@@ -85,7 +89,22 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
       if (retry) clearTimeout(retry);
       ws?.close();
     };
-  }, [id]);
+  }, [id, payload?.market?.question, pushTradeNotification]);
+
+  useEffect(() => {
+    if (!payload) return;
+    console.log("[Probabylon Market Detail]", {
+      market: payload.market,
+      agents: payload.agents?.map((agent: any) => ({
+        id: agent.id,
+        persona: agent.persona,
+        capital: agent.capital,
+        reputation: agent.reputation,
+        calibration_score: agent.calibration_score,
+      })),
+      latestTrades: payload.trades?.slice(-10),
+    });
+  }, [payload]);
 
   const chartData = useMemo(
     () =>
