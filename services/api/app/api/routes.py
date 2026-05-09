@@ -11,24 +11,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Agent, Market, Trade
 from app.db.session import get_db
 from app.schemas.market import DashboardPayload, MarketCreate, MarketDetailPayload, MarketRead, SimulationStart
-from app.services import enqueue_simulation, publish_market_event
+from app.services import enqueue_simulation, estimate_initial_probability, publish_market_event
 
 router = APIRouter(prefix="/api", tags=["probabylon"])
 
 
 @router.post("/markets", response_model=MarketRead)
 async def create_market(payload: MarketCreate, db: AsyncSession = Depends(get_db)) -> Market:
-    p0 = max(1e-6, min(1.0 - 1e-6, payload.initial_probability))
+    initial_probability = payload.initial_probability
+    if initial_probability is None:
+        initial_probability = await estimate_initial_probability(
+            question=payload.question,
+            description=payload.description,
+            resolution_criteria=payload.resolution_criteria,
+        )
+    liquidity_b = payload.lmsr_b or 48.0
+    rounds = payload.rounds or 10
+    max_agents = payload.max_agents or 10
+    p0 = max(1e-6, min(1.0 - 1e-6, initial_probability))
     q_no = 0.0
-    q_yes = payload.lmsr_b * math.log(p0 / (1.0 - p0))
+    q_yes = liquidity_b * math.log(p0 / (1.0 - p0))
     market = Market(
         question=payload.question,
         description=payload.description,
         resolution_criteria=payload.resolution_criteria,
         category=payload.category,
-        initial_probability=payload.initial_probability,
-        current_probability=payload.initial_probability,
-        lmsr_b=payload.lmsr_b,
+        initial_probability=initial_probability,
+        current_probability=initial_probability,
+        lmsr_b=liquidity_b,
         q_yes=q_yes,
         q_no=q_no,
         expires_at=payload.expires_at,
@@ -36,14 +46,17 @@ async def create_market(payload: MarketCreate, db: AsyncSession = Depends(get_db
     db.add(market)
     await db.commit()
     await db.refresh(market)
-    task_id = enqueue_simulation(market_id=market.id, rounds=payload.rounds, max_agents=payload.max_agents)
+    task_id = enqueue_simulation(market_id=market.id, rounds=rounds, max_agents=max_agents)
     await publish_market_event(
         {
             "type": "market_created",
             "market_id": market.id,
             "question": market.question,
+            "category": market.category,
             "probability": market.current_probability,
             "task_id": task_id,
+            "status": market.status,
+            "expires_at": market.expires_at.isoformat(),
         }
     )
     return market
@@ -119,6 +132,8 @@ async def dashboard(db: AsyncSession = Depends(get_db)) -> DashboardPayload:
                 "rationale": t.rationale,
                 "round_index": t.round_index,
                 "created_at": t.created_at.isoformat(),
+                "shares_delta": t.shares_delta,
+                "direction": t.active_positions.get("direction") if t.active_positions else None,
             }
             for t in recent_trades
         ],
@@ -196,6 +211,7 @@ async def market_detail(market_id: str, db: AsyncSession = Depends(get_db)) -> M
                 "research_history": t.research_history,
                 "round_index": t.round_index,
                 "created_at": t.created_at.isoformat(),
+                "direction": t.active_positions.get("direction") if t.active_positions else None,
             }
             for t in trades[-500:]
         ],

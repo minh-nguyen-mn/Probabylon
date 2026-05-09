@@ -10,10 +10,10 @@ class MarketCreate(BaseModel):
     resolution_criteria: str
     category: str = "general"
     expires_at: datetime
-    initial_probability: float = Field(default=0.5, ge=0.01, le=0.99)
-    lmsr_b: float = Field(default=75.0, gt=1.0)
-    rounds: int = Field(default=8, ge=1, le=200)
-    max_agents: int = Field(default=16, ge=2, le=1000)
+    initial_probability: float | None = Field(default=None, ge=0.01, le=0.99)
+    lmsr_b: float | None = Field(default=None, gt=1.0)
+    rounds: int | None = Field(default=None, ge=1, le=200)
+    max_agents: int | None = Field(default=None, ge=2, le=1000)
 
 
 class MarketRead(BaseModel):
