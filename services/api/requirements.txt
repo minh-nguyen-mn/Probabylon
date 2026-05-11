@@ -11,3 +11,5 @@ httpx>=0.28.0
 opentelemetry-sdk>=1.29.0
 opentelemetry-instrumentation-fastapi>=0.50b0
 celery>=5.3
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1,<4.1

@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.routes import router
+from app.api.auth_routes import auth_router
+from app.api.admin_routes import admin_router
 from app.core.config import settings
 from app.db.session import engine
 
@@ -20,6 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(auth_router)
+app.include_router(admin_router)
 
 
 @app.on_event("startup")
@@ -35,6 +39,24 @@ async def ensure_runtime_schema() -> None:
     async with engine.begin() as conn:
         for statement in statements:
             await conn.execute(text(statement))
+
+
+@app.on_event("startup")
+async def seed_admin_password() -> None:
+    """Fix the placeholder password hash for the default admin user."""
+    from app.core.auth import hash_password
+
+    async with engine.begin() as conn:
+        row = await conn.execute(
+            text("SELECT id, password_hash FROM users WHERE email = 'admin@probabylon.local'")
+        )
+        admin = row.mappings().first()
+        if admin and admin["password_hash"] and "placeholder" in admin["password_hash"]:
+            real_hash = hash_password("admin123")
+            await conn.execute(
+                text("UPDATE users SET password_hash = :h WHERE id = :uid"),
+                {"h": real_hash, "uid": admin["id"]},
+            )
 
 
 @app.get("/healthz")

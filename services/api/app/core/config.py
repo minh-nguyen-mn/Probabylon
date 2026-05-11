@@ -24,5 +24,14 @@ class Settings(BaseSettings):
 
     otel_exporter_otlp_endpoint: str = ""
 
+    # Auth / JWT
+    jwt_secret_key: str = "change-me-in-production-use-a-long-random-string"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 1440  # 24 hours
+
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
 
 settings = Settings()

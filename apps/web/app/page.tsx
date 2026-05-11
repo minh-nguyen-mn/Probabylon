@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AuthGuard } from "../components/auth-guard";
 import { AgentBoard } from "../components/agent-board";
 import { DashboardPanels } from "../components/dashboard-panels";
 import { LiveTape } from "../components/live-tape";
@@ -8,7 +9,7 @@ import { MarketCreateForm } from "../components/market-create-form";
 import { getDashboard } from "../lib/api";
 import { useAppStore } from "../lib/store";
 
-export default function Page() {
+function DashboardContent() {
   const { markets, trades, agents, wsState, setDashboard, applyTradeEvent, setWsState } = useAppStore();
 
   async function refresh() {
@@ -69,5 +70,13 @@ export default function Page() {
         <AgentBoard agents={agents} />
       </section>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
   );
 }
