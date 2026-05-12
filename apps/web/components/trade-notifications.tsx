@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import { useAppStore } from "../lib/store";
 
 function directionLabel(direction: "bullish" | "bearish") {
@@ -31,20 +32,21 @@ export function TradeNotifications() {
   }, [dismissNotification, notifications]);
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">
+    <div className="pointer-events-none fixed right-4 top-4 z-[60] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2">
       {notifications.map((notification) => (
         <div
           key={notification.id}
-          className={`pointer-events-auto rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md transition-all ${notification.direction === "bullish"
-            ? "border-emerald-400/40 bg-emerald-950/85 text-emerald-50"
-            : "border-rose-400/40 bg-rose-950/85 text-rose-50"
-            }`}
+          className={`pointer-events-auto rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md transition-all ${
+            notification.direction === "bullish"
+              ? "border-emerald-400/40 bg-emerald-950/90 text-emerald-50"
+              : "border-rose-400/40 bg-rose-950/90 text-rose-50"
+          }`}
         >
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-semibold">{notification.agent_title}</div>
+            <div className="min-w-0">
+              <div className="font-semibold">{notification.agent_title} vừa đầu tư</div>
               <div className="mt-1 text-xs opacity-80">
-                {directionLabel(notification.direction)} • {(notification.probability * 100).toFixed(1)}%
+                {directionLabel(notification.direction)} | {(notification.probability * 100).toFixed(1)}%
               </div>
             </div>
             <button
@@ -56,7 +58,7 @@ export function TradeNotifications() {
             </button>
           </div>
           <div className="mt-2 text-xs opacity-75">
-            {notification.market_question || notification.market_id} • spend {notification.spend.toFixed(2)}
+            {notification.market_question || notification.market_id} | vốn {notification.spend.toFixed(2)}
           </div>
         </div>
       ))}

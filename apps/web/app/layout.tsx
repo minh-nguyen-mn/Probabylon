@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ReactNode } from "react";
 import { TradeNotifications } from "../components/trade-notifications";
+import { NavbarWrapper } from "../components/navbar";
 
 export const metadata = {
   title: "Probabylon",
@@ -11,8 +12,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <NavbarWrapper>{children}</NavbarWrapper>
         <TradeNotifications />
-        {children}
       </body>
     </html>
   );

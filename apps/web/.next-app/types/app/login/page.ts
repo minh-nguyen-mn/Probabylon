@@ -1,4 +1,4 @@
-// File: D:\NiceAdmin\AI_20k\A20-App-065\apps\web\app\login\page.tsx
+// File: /app/app/login/page.tsx
 import * as entry from '../../../../app/login/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

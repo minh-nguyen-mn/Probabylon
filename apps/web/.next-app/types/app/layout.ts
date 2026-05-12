@@ -1,4 +1,4 @@
-// File: D:\NiceAdmin\AI_20k\A20-App-065\apps\web\app\layout.tsx
+// File: /app/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
