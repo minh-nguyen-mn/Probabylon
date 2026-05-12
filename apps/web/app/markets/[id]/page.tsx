@@ -55,7 +55,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
             ].slice(-1000),
           };
         });
-      } catch {}
+      } catch { }
     };
     return () => ws.close();
   }, [id]);

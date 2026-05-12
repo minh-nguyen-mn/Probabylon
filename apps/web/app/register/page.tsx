@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRegister, apiGoogleLogin } from "../../lib/auth-api";
-import { useAuthStore } from "../../lib/auth-store";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { apiGoogleLogin, apiRegister } from "../../lib/auth-api";
+import { useAuthStore } from "../../lib/auth-store";
 import { auth, googleProvider } from "../../lib/firebase";
 
 export default function RegisterPage() {
@@ -16,32 +16,53 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { setAuth } = useAuthStore();
-  const router = useRouter();
-
   const [showCompleteProfile, setShowCompleteProfile] = useState(false);
   const [googleIdToken, setGoogleIdToken] = useState("");
   const [completeData, setCompleteData] = useState({
     username: "",
     name: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
+
+  const { setAuth } = useAuthStore();
+  const router = useRouter();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
+
+    const normalizedName = name.trim();
+    const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedName || !normalizedUsername || !normalizedEmail) {
+      setError("Vui lòng nhập đầy đủ họ tên, tên đăng nhập và email.");
       return;
     }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+      setError("Tên đăng nhập chỉ được chứa chữ, số và dấu gạch dưới.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const resp = await apiRegister(email, username, password, name);
+      const resp = await apiRegister(normalizedEmail, normalizedUsername, password, normalizedName);
       setAuth(resp.access_token, resp.user);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      setError(err.message || "Đăng ký thất bại.");
     } finally {
       setLoading(false);
     }
@@ -49,18 +70,21 @@ export default function RegisterPage() {
 
   async function handleGoogleRegister() {
     if (!auth || !googleProvider) {
-      setError("Vui lòng cấu hình Firebase trong file .env trước khi sử dụng tính năng này.");
+      setError("Vui lòng cấu hình Firebase trong file .env trước khi dùng đăng ký Google.");
       return;
     }
 
     setError("");
     setLoading(true);
+
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
-      const idToken = credential?.idToken || await result.user.getIdToken();
-      
-      if (!idToken) throw new Error("Không thể lấy ID token từ Google");
+      const idToken = credential?.idToken || (await result.user.getIdToken());
+
+      if (!idToken) {
+        throw new Error("Không thể lấy ID token từ Google.");
+      }
 
       setGoogleIdToken(idToken);
 
@@ -71,21 +95,20 @@ export default function RegisterPage() {
       } catch (err: any) {
         if (err.detail?.code === "NEED_REGISTRATION") {
           setShowCompleteProfile(true);
-          setCompleteData({
-            ...completeData,
+          setCompleteData((prev) => ({
+            ...prev,
             name: err.detail.name || "",
-            username: err.detail.email?.split("@")[0] || ""
-          });
+            username: err.detail.email?.split("@")[0] || "",
+          }));
         } else {
           throw err;
         }
       }
     } catch (err: any) {
-      console.error("Lỗi đăng ký Google:", err);
       if (err.code === "auth/popup-closed-by-user") {
-        setError("Đăng ký bị hủy bởi người dùng.");
+        setError("Bạn đã đóng cửa sổ đăng ký Google.");
       } else {
-        setError(err.message || "Đăng ký Google thất bại. Vui lòng thử lại.");
+        setError(err.message || "Đăng ký Google thất bại.");
       }
     } finally {
       setLoading(false);
@@ -94,23 +117,43 @@ export default function RegisterPage() {
 
   async function handleCompleteSubmit(e: FormEvent) {
     e.preventDefault();
-    if (completeData.password !== completeData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
+    setError("");
+
+    const normalizedName = completeData.name.trim();
+    const normalizedUsername = completeData.username.trim();
+
+    if (!normalizedName || !normalizedUsername) {
+      setError("Vui lòng nhập đầy đủ thông tin để hoàn tất đăng ký.");
       return;
     }
-    setError("");
+
+    if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+      setError("Tên đăng nhập chỉ được chứa chữ, số và dấu gạch dưới.");
+      return;
+    }
+
+    if (completeData.password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự.");
+      return;
+    }
+
+    if (completeData.password !== completeData.confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
     setLoading(true);
     try {
       const resp = await apiGoogleLogin(
         googleIdToken,
-        completeData.username,
+        normalizedUsername,
         completeData.password,
-        completeData.name
+        normalizedName
       );
       setAuth(resp.access_token, resp.user);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Hoàn tất đăng ký thất bại");
+      setError(err.message || "Hoàn tất đăng ký thất bại.");
     } finally {
       setLoading(false);
     }
@@ -118,95 +161,64 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      {/* Background decoration */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-emerald-600/10 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-violet-600/10 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
-        <div className="bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 p-8 rounded-2xl shadow-2xl relative">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 shadow-2xl backdrop-blur-xl">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shadow-indigo-500/20">
+              <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">
+            <h1 className="mb-1 text-2xl font-bold text-white">
               {showCompleteProfile ? "Hoàn tất thông tin" : "Tạo tài khoản"}
             </h1>
-            <p className="text-zinc-400 text-sm">
-              {showCompleteProfile 
-                ? "Thêm một vài thông tin để bắt đầu trải nghiệm" 
-                : "Tham gia cộng đồng Probabylon"}
+            <p className="text-sm text-zinc-400">
+              {showCompleteProfile
+                ? "Bổ sung vài thông tin để hoàn tất đăng ký."
+                : "Tạo tài khoản mới để đăng nhập vào hệ thống."}
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
           {showCompleteProfile ? (
             <form onSubmit={handleCompleteSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                  Tên đăng nhập
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={completeData.username}
-                  onChange={(e) => setCompleteData({ ...completeData, username: e.target.value })}
-                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                  placeholder="username"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                  Tên hiển thị
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={completeData.name}
-                  onChange={(e) => setCompleteData({ ...completeData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                  placeholder="Họ và tên"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                  Mật khẩu
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={completeData.password}
-                  onChange={(e) => setCompleteData({ ...completeData, password: e.target.value })}
-                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                  Nhập lại mật khẩu
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={completeData.confirmPassword}
-                  onChange={(e) => setCompleteData({ ...completeData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                  placeholder="••••••••"
-                />
-              </div>
+              <Field
+                label="Tên đăng nhập"
+                value={completeData.username}
+                onChange={(value) => setCompleteData((prev) => ({ ...prev, username: value }))}
+                placeholder="username"
+              />
+              <Field
+                label="Tên hiển thị"
+                value={completeData.name}
+                onChange={(value) => setCompleteData((prev) => ({ ...prev, name: value }))}
+                placeholder="Nguyễn Văn A"
+              />
+              <PasswordField
+                label="Mật khẩu"
+                value={completeData.password}
+                onChange={(value) => setCompleteData((prev) => ({ ...prev, password: value }))}
+              />
+              <PasswordField
+                label="Nhập lại mật khẩu"
+                value={completeData.confirmPassword}
+                onChange={(value) => setCompleteData((prev) => ({ ...prev, confirmPassword: value }))}
+              />
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                className="mt-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:from-violet-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? "Đang xử lý..." : "Hoàn tất đăng ký"}
               </button>
@@ -214,7 +226,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowCompleteProfile(false)}
-                className="w-full text-zinc-500 text-sm hover:text-white transition-colors py-2"
+                className="w-full py-2 text-sm text-zinc-500 transition-colors hover:text-white"
               >
                 Hủy bỏ
               </button>
@@ -222,76 +234,16 @@ export default function RegisterPage() {
           ) : (
             <>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Họ và tên
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                    placeholder="Nguyễn Văn A"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Tên đăng nhập
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                    placeholder="username"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                    placeholder="your@email.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Mật khẩu
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Xác nhận mật khẩu
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all text-white"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <Field label="Họ và tên" value={name} onChange={setName} placeholder="Nguyễn Văn A" />
+                <Field label="Tên đăng nhập" value={username} onChange={setUsername} placeholder="username" />
+                <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="your@email.com" />
+                <PasswordField label="Mật khẩu" value={password} onChange={setPassword} />
+                <PasswordField label="Xác nhận mật khẩu" value={confirmPassword} onChange={setConfirmPassword} />
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                  className="mt-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:from-violet-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? "Đang đăng ký..." : "Đăng ký tài khoản"}
                 </button>
@@ -299,7 +251,7 @@ export default function RegisterPage() {
 
               <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-800"></div>
+                  <div className="w-full border-t border-zinc-800" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-zinc-900 px-2 text-zinc-500">hoặc</span>
@@ -310,9 +262,9 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleGoogleRegister}
                 disabled={loading}
-                className="w-full py-3 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 rounded-xl flex items-center justify-center gap-3 transition-all text-sm font-medium text-white shadow-sm"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700/50 bg-zinc-800/50 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -333,10 +285,10 @@ export default function RegisterPage() {
                 Đăng ký bằng Google
               </button>
 
-              <div className="text-center mt-8">
-                <p className="text-zinc-500 text-sm">
+              <div className="mt-8 text-center">
+                <p className="text-sm text-zinc-500">
                   Đã có tài khoản?{" "}
-                  <a href="/login" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
+                  <a href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
                     Đăng nhập
                   </a>
                 </p>
@@ -347,4 +299,46 @@ export default function RegisterPage() {
       </div>
     </div>
   );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 ml-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        {label}
+      </label>
+      <input
+        type={type}
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white transition-all focus:border-violet-500/40 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return <Field label={label} type="password" value={value} onChange={onChange} placeholder="••••••••" />;
 }

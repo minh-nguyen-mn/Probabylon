@@ -1,5 +1,35 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+function extractErrorMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg?: unknown }).msg || "");
+        }
+        return "";
+      })
+      .filter(Boolean);
+
+    if (messages.length) return messages.join(", ");
+  }
+
+  if (detail && typeof detail === "object") {
+    if ("message" in detail && typeof (detail as { message?: unknown }).message === "string") {
+      return (detail as { message: string }).message;
+    }
+
+    if ("code" in detail && typeof (detail as { code?: unknown }).code === "string") {
+      return (detail as { code: string }).code;
+    }
+  }
+
+  return fallback;
+}
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -43,7 +73,7 @@ export async function apiRegister(email: string, username: string, password: str
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Registration failed");
+    throw new Error(extractErrorMessage(body.detail, "Registration failed"));
   }
   return res.json();
 }
@@ -56,7 +86,7 @@ export async function apiLogin(email: string, password: string): Promise<TokenRe
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Login failed");
+    throw new Error(extractErrorMessage(body.detail, "Login failed"));
   }
   return res.json();
 }
@@ -74,7 +104,7 @@ export async function apiGoogleLogin(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const error = new Error(body.detail?.code || body.detail || "Google login failed") as any;
+    const error = new Error(extractErrorMessage(body.detail, "Google login failed")) as any;
     error.detail = body.detail;
     throw error;
   }
@@ -103,7 +133,7 @@ export async function apiUpdateUser(userId: string, data: { name?: string; role?
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Failed to update user");
+    throw new Error(extractErrorMessage(body.detail, "Failed to update user"));
   }
   return res.json();
 }
@@ -112,6 +142,6 @@ export async function apiDeleteUser(userId: string): Promise<void> {
   const res = await authFetch(`${API_BASE}/admin/users/${userId}`, { method: "DELETE" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Failed to delete user");
+    throw new Error(extractErrorMessage(body.detail, "Failed to delete user"));
   }
 }

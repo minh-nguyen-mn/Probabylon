@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { Auth, getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,8 +12,8 @@ const firebaseConfig = {
 
 // Khởi tạo an toàn (chống crash khi chưa cấu hình .env)
 let app = null;
-let auth = null;
-let googleProvider = null;
+let auth: Auth | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
 
 if (typeof window !== "undefined" && firebaseConfig.apiKey) {
   try {
