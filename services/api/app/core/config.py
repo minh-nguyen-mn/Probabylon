@@ -5,11 +5,20 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+def _find_env_file() -> str:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / ".env"
+        if candidate.exists():
+            return str(candidate)
+    return ".env"
+
+
+ROOT_ENV_FILE = _find_env_file()
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=(str(ROOT_ENV_FILE), ".env"), env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(ROOT_ENV_FILE, ".env"), env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Probabylon API"
     app_env: str = "dev"

@@ -73,7 +73,12 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
 
 @auth_router.post("/login", response_model=TokenResponse)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(func.lower(User.email) == payload.email.strip().lower()))
+    identifier = payload.email.strip().lower()
+    result = await db.execute(
+        select(User).where(
+            (func.lower(User.email) == identifier) | (func.lower(User.username) == identifier)
+        )
+    )
     user = result.scalar_one_or_none()
     if not user or not user.password_hash:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
