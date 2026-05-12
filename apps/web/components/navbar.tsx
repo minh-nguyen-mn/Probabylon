@@ -85,6 +85,18 @@ function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isAdmin ? (
+            <a
+              href="/admin"
+              className={`rounded-full border px-3 py-2 text-sm transition lg:hidden ${
+                pathname === "/admin"
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-300"
+                  : "border-amber-500/20 text-amber-300 hover:bg-amber-500/10"
+              }`}
+            >
+              Quản trị
+            </a>
+          ) : null}
           <a href="/profile" className="hidden rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-500 md:block">
             Hồ sơ
           </a>
