@@ -35,11 +35,10 @@ export function TradeNotifications() {
       {notifications.map((notification) => (
         <div
           key={notification.id}
-          className={`pointer-events-auto rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md transition-all ${
-            notification.direction === "bullish"
-              ? "border-emerald-400/40 bg-emerald-950/85 text-emerald-50"
-              : "border-rose-400/40 bg-rose-950/85 text-rose-50"
-          }`}
+          className={`pointer-events-auto rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-md transition-all ${notification.direction === "bullish"
+            ? "border-emerald-400/40 bg-emerald-950/85 text-emerald-50"
+            : "border-rose-400/40 bg-rose-950/85 text-rose-50"
+            }`}
         >
           <div className="flex items-start justify-between gap-3">
             <div>
