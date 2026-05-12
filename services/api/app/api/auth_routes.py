@@ -3,7 +3,8 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
@@ -37,19 +38,34 @@ def _user_read(u: User) -> UserRead:
 
 @auth_router.post("/register", response_model=TokenResponse)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(select(User).where((User.email == payload.email) | (User.username == payload.username)))
+    email = payload.email.strip().lower()
+    username = payload.username.strip()
+    name = payload.name.strip()
+
+    if not username:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Username is required")
+
+    existing = await db.execute(
+        select(User).where(
+            (func.lower(User.email) == email) | (func.lower(User.username) == username.lower())
+        )
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email or Username already registered")
     user = User(
         id=str(uuid4()),
-        email=payload.email,
-        username=payload.username,
+        email=email,
+        username=username,
         password_hash=hash_password(payload.password),
-        name=payload.name or payload.username,
+        name=name or username,
         role="user",
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email or Username already registered")
     await db.refresh(user)
     token = create_access_token(user.id, user.role)
     return TokenResponse(access_token=token, user=_user_read(user))
@@ -57,7 +73,7 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
 
 @auth_router.post("/login", response_model=TokenResponse)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    result = await db.execute(select(User).where(func.lower(User.email) == payload.email.strip().lower()))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
@@ -72,8 +88,8 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
 @auth_router.post("/google", response_model=TokenResponse)
 async def google_login(payload: GoogleAuth, db: AsyncSession = Depends(get_db)):
     google_data = await verify_google_token(payload.id_token)
-    google_id = google_data.get("sub", "")
-    email = google_data.get("email", "")
+    google_id = google_data.get("sub", "").strip()
+    email = google_data.get("email", "").strip().lower()
     name = google_data.get("name", email.split("@")[0])
     picture = google_data.get("picture", "")
 
@@ -91,7 +107,10 @@ async def google_login(payload: GoogleAuth, db: AsyncSession = Depends(get_db)):
         await db.refresh(user)
     else:
         # User doesn't exist. Check if we have registration info
-        if not payload.username or not payload.password:
+        username = payload.username.strip() if payload.username else ""
+        display_name = payload.name.strip() if payload.name else ""
+
+        if not username or not payload.password:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -103,23 +122,26 @@ async def google_login(payload: GoogleAuth, db: AsyncSession = Depends(get_db)):
             )
 
         # Check if username already exists
-        if payload.username:
-            existing_username = await db.execute(select(User).where(User.username == payload.username))
-            if existing_username.scalar_one_or_none():
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+        existing_username = await db.execute(select(User).where(func.lower(User.username) == username.lower()))
+        if existing_username.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
 
         user = User(
             id=str(uuid4()),
             email=email,
-            username=payload.username,
+            username=username,
             password_hash=hash_password(payload.password),
-            name=payload.name or name,
+            name=display_name or name,
             google_id=google_id,
             avatar_url=picture,
             role="user",
         )
         db.add(user)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email or Username already registered")
         await db.refresh(user)
 
     if not user.is_active:
