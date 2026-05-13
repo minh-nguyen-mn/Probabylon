@@ -37,7 +37,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: sh -c "until python -c \"import psycopg; psycopg.connect('postgresql://postgres:postgres@db:5432/probabylon').close()\"; do echo 'waiting for db'; sleep 2; done; alembic -c alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "until python -c \"import psycopg; psycopg.connect('postgresql://postgres:postgres@db:5432/probabylon').close()\"; do echo 'waiting for db'; sleep 2; done; alembic -c alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     volumes:
       - ./services/api:/app
       - ./services/worker:/app/worker
@@ -61,7 +61,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-
+    command: celery -A worker.celery_app worker --loglevel=info
+    volumes:
+      - ./services/api:/app
+      - ./services/worker:/app/worker
+    working_dir: /app
   web:
     image: node:22
     working_dir: /app
