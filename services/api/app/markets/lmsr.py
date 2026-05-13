@@ -16,9 +16,15 @@ def probability(b: float, q_yes: float, q_no: float) -> float:
 
 
 def move_to_probability(b: float, q_yes: float, q_no: float, target_probability: float) -> tuple[float, float, float]:
+    current_probability = probability(b, q_yes, q_no)
     target_probability = clamp(target_probability)
     before = cost(b, q_yes, q_no)
     gap = b * math.log(target_probability / (1 - target_probability))
-    q_yes_next = q_no + gap
-    spend = max(0.0, cost(b, q_yes_next, q_no) - before)
-    return q_yes_next, q_no, spend
+    if target_probability >= current_probability:
+        q_yes_next = q_no + gap
+        q_no_next = q_no
+    else:
+        q_yes_next = q_yes
+        q_no_next = q_yes - gap
+    spend = max(0.0, cost(b, q_yes_next, q_no_next) - before)
+    return q_yes_next, q_no_next, spend

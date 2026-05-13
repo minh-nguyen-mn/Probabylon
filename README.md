@@ -1,6 +1,6 @@
 # Probabylon
 
-Probabylon is a production-ready, distributed multi-agent prediction market engine for collective AI forecasting.
+# tao nhanh khac de merge
 
 ## Structure
 
@@ -45,7 +45,7 @@ bash scripts/setup_hooks.sh
 cp .env.example .env
 ```
 
-Open `.env` and fill in your `ANTHROPIC_API_KEY`. The `AI_LOG_*` variables are pre-filled.
+Open `.env` and fill in your provider key. If you only use OpenAI, `OPENAI_API_KEY` is enough. The `AI_LOG_*` variables are pre-filled.
 
 ### 3. Run distributed stack
 

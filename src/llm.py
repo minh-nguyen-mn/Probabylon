@@ -4,8 +4,15 @@ import json
 import random
 from typing import Any
 
-from anthropic import Anthropic
-from openai import OpenAI
+try:
+    from anthropic import Anthropic
+except ImportError:
+    Anthropic = None
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 from .config import ANTHROPIC_API_KEY, DEFAULT_MODEL, OPENAI_API_KEY
 from .models import AgentPersona, PredictionMarket, ResearchPacket, TradeDecision
@@ -14,8 +21,8 @@ from .models import AgentPersona, PredictionMarket, ResearchPacket, TradeDecisio
 class PersonaReasoner:
     def __init__(self) -> None:
         self.model = DEFAULT_MODEL
-        self.anthropic = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
-        self.openai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.anthropic = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY and Anthropic else None
+        self.openai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY and OpenAI else None
 
     def decide(
         self,
@@ -25,11 +32,24 @@ class PersonaReasoner:
         current_probability: float,
         capital: float,
     ) -> TradeDecision:
-        if self.anthropic and "claude" in self.model:
+        if self.anthropic and self._is_anthropic_model(self.model):
             return self._anthropic_decide(persona, market, research, current_probability, capital)
-        if self.openai and "gpt" in self.model:
+        if self.openai and self._is_openai_model(self.model):
             return self._openai_decide(persona, market, research, current_probability, capital)
+        if self.openai:
+            return self._openai_decide(persona, market, research, current_probability, capital)
+        if self.anthropic:
+            return self._anthropic_decide(persona, market, research, current_probability, capital)
         return self._fallback_decide(persona, market, research, current_probability, capital)
+
+    @staticmethod
+    def _is_openai_model(model: str) -> bool:
+        normalized = model.lower()
+        return normalized.startswith(("gpt", "o1", "o3", "o4"))
+
+    @staticmethod
+    def _is_anthropic_model(model: str) -> bool:
+        return "claude" in model.lower()
 
     def _prompt(
         self,
