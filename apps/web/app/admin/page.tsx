@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { AuthGuard } from "../../components/auth-guard";
 import {
   apiDeleteUser,
@@ -112,22 +111,10 @@ function AdminContent() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Users</div>
-            <div className="mt-2 text-3xl font-semibold">{users.length}</div>
-          </div>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Admins</div>
-            <div className="mt-2 text-3xl font-semibold text-amber-300">{users.filter((user) => user.role === "admin").length}</div>
-          </div>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Pending proposals</div>
-            <div className="mt-2 text-3xl font-semibold text-cyan-300">{pendingProposals.length}</div>
-          </div>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Reviewed</div>
-            <div className="mt-2 text-3xl font-semibold text-rose-300">{reviewedProposals.length}</div>
-          </div>
+          <StatCard title="Users" value={users.length} />
+          <StatCard title="Admins" value={users.filter((user) => user.role === "admin").length} color="text-amber-300" />
+          <StatCard title="Pending" value={pendingProposals.length} color="text-cyan-300" />
+          <StatCard title="Reviewed" value={reviewedProposals.length} color="text-rose-300" />
         </div>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
@@ -149,14 +136,11 @@ function AdminContent() {
           <div className="space-y-6">
             <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
               <h2 className="text-xl font-semibold">Moderation queue</h2>
-              <p className="mt-1 text-sm text-zinc-400">Only proposals waiting for review stay in this queue.</p>
               <div className="mt-4 space-y-3">
-                {!loading && !pendingProposals.length ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
-                    No pending proposals right now.
-                  </div>
-                ) : null}
-                {(loading ? [] : pendingProposals).map((proposal) => (
+                {!loading && !pendingProposals.length && (
+                  <EmptyState message="No pending proposals right now." />
+                )}
+                {pendingProposals.map((proposal) => (
                   <div key={proposal.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -169,47 +153,9 @@ function AdminContent() {
                     </div>
                     <p className="mt-3 text-sm text-zinc-400">{proposal.description}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        disabled={actionLoading === proposal.id}
-                        onClick={() => moderateProposal(proposal, "approved")}
-                        className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-60"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        disabled={actionLoading === proposal.id}
-                        onClick={() => moderateProposal(proposal, "rejected")}
-                        className="rounded-full border border-rose-400/40 px-4 py-2 text-sm text-rose-300 disabled:opacity-60"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        disabled={actionLoading === proposal.id}
-                        onClick={() => moderateProposal(proposal, "archived")}
-                        className="rounded-full border border-zinc-700 px-4 py-2 text-sm text-zinc-300 disabled:opacity-60"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-              <h2 className="text-xl font-semibold">Recently reviewed</h2>
-              <p className="mt-1 text-sm text-zinc-400">Approved, rejected, and archived proposals move here after action.</p>
-              <div className="mt-4 space-y-3">
-                {!loading && !reviewedProposals.length ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
-                    No reviewed proposals yet.
-                  </div>
-                ) : null}
-                {(loading ? [] : reviewedProposals.slice(0, 8)).map((proposal) => (
-                  <div key={proposal.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
-                    <div className="font-medium text-white">{proposal.question}</div>
-                    <div className="mt-2 text-xs uppercase tracking-[0.16em] text-zinc-500">
-                      {proposal.category} | {proposal.status}
+                      <ActionButton label="Approve" onClick={() => moderateProposal(proposal, "approved")} loading={actionLoading === proposal.id} variant="emerald" />
+                      <ActionButton label="Reject" onClick={() => moderateProposal(proposal, "rejected")} loading={actionLoading === proposal.id} variant="rose" />
+                      <ActionButton label="Archive" onClick={() => moderateProposal(proposal, "archived")} loading={actionLoading === proposal.id} variant="zinc" />
                     </div>
                   </div>
                 ))}
@@ -220,7 +166,7 @@ function AdminContent() {
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
             <h2 className="text-xl font-semibold">User management</h2>
             <div className="mt-4 space-y-3">
-              {(loading ? [] : users).map((user) => (
+              {users.map((user) => (
                 <div key={user.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -254,10 +200,43 @@ function AdminContent() {
   );
 }
 
+// Helpers for cleaner code
+function StatCard({ title, value, color = "text-white" }: { title: string; value: number; color?: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+      <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">{title}</div>
+      <div className={`mt-2 text-3xl font-semibold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
+      {message}
+    </div>
+  );
+}
+
+function ActionButton({ label, onClick, loading, variant }: { label: string; onClick: () => void; loading: boolean; variant: "emerald" | "rose" | "zinc" }) {
+  const styles = {
+    emerald: "bg-emerald-400 text-zinc-950",
+    rose: "border border-rose-400/40 text-rose-300",
+    zinc: "border border-zinc-700 text-zinc-300",
+  };
+  return (
+    <button disabled={loading} onClick={onClick} className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-60 ${styles[variant]}`}>
+      {label}
+    </button>
+  );
+}
+
 export default function AdminPage() {
   return (
     <AuthGuard requireAdmin>
-      <AdminContent />
+      <Suspense fallback={<div className="p-8 text-white">Loading Admin Console...</div>}>
+        <AdminContent />
+      </Suspense>
     </AuthGuard>
   );
 }

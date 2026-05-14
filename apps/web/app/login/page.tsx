@@ -8,8 +8,7 @@ import { apiGoogleLogin, apiLogin } from "../../lib/auth-api";
 import { useAuthStore } from "../../lib/auth-store";
 import { auth, googleProvider } from "../../lib/firebase";
 
-// 1. Move the main logic into a sub-component
-function LoginCard() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -194,7 +193,6 @@ function LoginCard() {
   );
 }
 
-// 2. The main page component now wraps everything in Suspense
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
@@ -205,7 +203,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <Suspense fallback={<div className="text-white text-center">Đang tải...</div>}>
-          <LoginCard />
+          <LoginForm />
         </Suspense>
       </div>
     </div>
