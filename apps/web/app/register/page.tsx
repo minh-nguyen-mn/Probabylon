@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-import { apiGoogleLogin, apiRegister } from "../../lib/auth-api";
+import { useI18n } from "../../hooks/use-i18n";
+import { apiGetGoogleAuthUrl, apiRegister } from "../../lib/auth-api";
 import { useAuthStore } from "../../lib/auth-store";
-import { auth, googleProvider } from "../../lib/firebase";
 
 export default function RegisterPage() {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -15,15 +15,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
-  const [googleIdToken, setGoogleIdToken] = useState("");
-  const [completeData, setCompleteData] = useState({
-    username: "",
-    name: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const { setAuth } = useAuthStore();
+  const { hydrate } = useAuthStore();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,109 +26,42 @@ export default function RegisterPage() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedName || !normalizedUsername || !normalizedEmail) {
-      setError("Vui lòng nhập đầy đủ họ tên, tên đăng nhập và email.");
+      setError("Please enter your full name, username, and email.");
       return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
-      setError("Tên đăng nhập chỉ được chứa chữ, số và dấu gạch dưới.");
+      setError("Username may only contain letters, numbers, and underscores.");
       return;
     }
-    if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+      setError("Password confirmation does not match.");
       return;
     }
 
     setLoading(true);
     try {
       await apiRegister(normalizedEmail, normalizedUsername, password, normalizedName);
-      window.location.href = "/login?registered=1";
+      await hydrate();
+      window.location.href = "/";
     } catch (err: any) {
-      setError(err.message || "Đăng ký thất bại.");
+      setError(err.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleGoogleRegister() {
-    if (!auth || !googleProvider) {
-      setError("Vui lòng cấu hình Firebase trong file .env trước khi dùng đăng ký Google.");
-      return;
-    }
-
     setError("");
     setLoading(true);
-
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const idToken = credential?.idToken || (await result.user.getIdToken());
-      if (!idToken) throw new Error("Không thể lấy ID token từ Google.");
-
-      setGoogleIdToken(idToken);
-
-      try {
-        const resp = await apiGoogleLogin(idToken);
-        setAuth(resp.access_token, resp.user);
-        window.location.href = "/";
-      } catch (err: any) {
-        if (err.detail?.code === "NEED_REGISTRATION") {
-          setShowCompleteProfile(true);
-          setCompleteData((prev) => ({
-            ...prev,
-            name: err.detail.name || "",
-            username: err.detail.email?.split("@")[0] || "",
-          }));
-        } else {
-          throw err;
-        }
-      }
+      const url = await apiGetGoogleAuthUrl();
+      window.location.href = url;
     } catch (err: any) {
-      if (err.code === "auth/popup-closed-by-user") {
-        setError("Bạn đã đóng cửa sổ đăng ký Google.");
-      } else {
-        setError(err.message || "Đăng ký Google thất bại.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCompleteSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    const normalizedName = completeData.name.trim();
-    const normalizedUsername = completeData.username.trim();
-
-    if (!normalizedName || !normalizedUsername) {
-      setError("Vui lòng nhập đầy đủ thông tin để hoàn tất đăng ký.");
-      return;
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
-      setError("Tên đăng nhập chỉ được chứa chữ, số và dấu gạch dưới.");
-      return;
-    }
-    if (completeData.password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự.");
-      return;
-    }
-    if (completeData.password !== completeData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const resp = await apiGoogleLogin(googleIdToken, normalizedUsername, completeData.password, normalizedName);
-      setAuth(resp.access_token, resp.user);
-      window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message || "Hoàn tất đăng ký thất bại.");
-    } finally {
+      setError(err.message || "Google registration failed.");
       setLoading(false);
     }
   }
@@ -156,76 +81,56 @@ export default function RegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h1 className="mb-1 text-2xl font-bold text-white">{showCompleteProfile ? "Hoàn tất thông tin" : "Tạo tài khoản"}</h1>
-            <p className="text-sm text-zinc-400">
-              {showCompleteProfile ? "Bổ sung vài thông tin để hoàn tất đăng ký." : "Tạo tài khoản mới để tham gia dự báo và giao dịch xác suất."}
-            </p>
+            <h1 className="mb-1 text-2xl font-bold text-white">{t("auth", "register")}</h1>
+            <p className="text-sm text-zinc-400">Create a persistent account for private forecasts, market submissions, and admin-reviewed participation.</p>
           </div>
 
           {error ? <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">{error}</div> : null}
 
-          {showCompleteProfile ? (
-            <form onSubmit={handleCompleteSubmit} className="space-y-4">
-              <Field label="Tên đăng nhập" value={completeData.username} onChange={(value) => setCompleteData((prev) => ({ ...prev, username: value }))} placeholder="ten_dang_nhap" />
-              <Field label="Tên hiển thị" value={completeData.name} onChange={(value) => setCompleteData((prev) => ({ ...prev, name: value }))} placeholder="Nguyễn Văn A" />
-              <Field label="Mật khẩu" type="password" value={completeData.password} onChange={(value) => setCompleteData((prev) => ({ ...prev, password: value }))} placeholder="••••••••" />
-              <Field label="Nhập lại mật khẩu" type="password" value={completeData.confirmPassword} onChange={(value) => setCompleteData((prev) => ({ ...prev, confirmPassword: value }))} placeholder="••••••••" />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Field label={t("auth", "name")} value={name} onChange={setName} placeholder="Avery Nguyen" />
+            <Field label={t("auth", "username")} value={username} onChange={setUsername} placeholder="avery_nguyen" />
+            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="avery@example.com" />
+            <Field label={t("auth", "password")} type="password" value={password} onChange={setPassword} placeholder="••••••••" />
+            <Field label={t("auth", "confirmPassword")} type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" />
 
-              <button type="submit" disabled={loading} className="mt-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-bold text-white disabled:opacity-50">
-                {loading ? "Đang xử lý..." : "Hoàn tất đăng ký"}
-              </button>
-              <button type="button" onClick={() => setShowCompleteProfile(false)} className="w-full py-2 text-sm text-zinc-500 transition-colors hover:text-white">
-                Hủy bỏ
-              </button>
-            </form>
-          ) : (
-            <>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Họ và tên" value={name} onChange={setName} placeholder="Nguyễn Văn A" />
-                <Field label="Tên đăng nhập" value={username} onChange={setUsername} placeholder="ten_dang_nhap" />
-                <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="ban@email.com" />
-                <Field label="Mật khẩu" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
-                <Field label="Xác nhận mật khẩu" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" />
+            <button type="submit" disabled={loading} className="mt-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-bold text-white disabled:opacity-50">
+              {loading ? "Creating account..." : t("auth", "register")}
+            </button>
+          </form>
 
-                <button type="submit" disabled={loading} className="mt-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-bold text-white disabled:opacity-50">
-                  {loading ? "Đang đăng ký..." : "Đăng ký tài khoản"}
-                </button>
-              </form>
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-zinc-800" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-zinc-900 px-2 text-zinc-500">or</span>
+            </div>
+          </div>
 
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-800" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-zinc-900 px-2 text-zinc-500">hoặc</span>
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => void handleGoogleRegister()}
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700/50 bg-zinc-800/50 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            {t("auth", "continueWithGoogle")}
+          </button>
 
-              <button
-                type="button"
-                onClick={handleGoogleRegister}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700/50 bg-zinc-800/50 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Đăng ký bằng Google
-              </button>
-
-              <div className="mt-8 text-center">
-                <p className="text-sm text-zinc-500">
-                  Đã có tài khoản?{" "}
-                  <a href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
-                    Đăng nhập
-                  </a>
-                </p>
-              </div>
-            </>
-          )}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-zinc-500">
+              {t("auth", "haveAccount")}{" "}
+              <a href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
+                {t("auth", "login")}
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

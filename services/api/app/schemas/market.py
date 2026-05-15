@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -7,7 +9,7 @@ from pydantic import BaseModel, Field
 class MarketCreate(BaseModel):
     question: str = Field(min_length=5, max_length=500)
     description: str = ""
-    resolution_criteria: str
+    resolution_criteria: str = Field(min_length=10)
     category: str = "general"
     expires_at: datetime
     initial_probability: float | None = Field(default=None, ge=0.01, le=0.99)
@@ -60,6 +62,39 @@ class ForecastAsk(BaseModel):
     question: str = Field(min_length=5, max_length=500)
     category: str = "general"
     context: str = ""
+
+
+class ForecastAgentReasoning(BaseModel):
+    agent: str
+    stance: str
+    confidence: float
+    reasoning: str
+    supporting_evidence: list[str]
+    contradictory_signals: list[str]
+
+
+class ForecastSource(BaseModel):
+    label: str
+    source_type: str
+    status: str
+    timestamp: str
+    detail: str
+
+
+class ForecastResult(BaseModel):
+    id: str
+    final_prediction: str
+    probability: float
+    confidence_score: float
+    supporting_evidence: list[str]
+    agent_reasoning: list[ForecastAgentReasoning]
+    contradictory_signals: list[str]
+    data_sources_used: list[ForecastSource]
+    timestamp: str
+    model_version: str
+    probability_distribution: dict[str, float]
+    summary: str
+    insufficient_data: bool = False
 
 
 class MarketProposalCreate(BaseModel):

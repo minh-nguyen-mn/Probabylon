@@ -6,6 +6,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, Respons
 
 import { AgentMiniCard, MarketCard, SectionHeader, StatCard } from "../../../components/platform";
 import { getMarketDetail } from "../../../lib/api";
+import { getWebSocketUrl } from "../../../lib/runtime";
 import { MarketDetailPayload } from "../../../lib/types";
 
 export default function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +30,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
   }, [id]);
 
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/markets";
+    const wsUrl = getWebSocketUrl();
     let disposed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let ws: WebSocket | undefined;

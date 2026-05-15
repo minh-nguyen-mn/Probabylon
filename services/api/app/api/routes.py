@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime
 import json
+import logging
 import math
 import re
 from statistics import mean, pstdev
@@ -10,8 +11,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, select
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analysis_service import generate_structured_forecast
 from app.core.auth import get_current_user
 from app.db.models import Agent, ForecastQuery, Market, MarketProposal, Trade, User
 from app.db.session import get_db
@@ -19,6 +22,7 @@ from app.schemas.market import (
     DashboardPayload,
     FeaturedMarketUpdate,
     ForecastAsk,
+    ForecastResult,
     MarketCreate,
     MarketDetailPayload,
     MarketProposalCreate,
@@ -29,6 +33,7 @@ from app.schemas.market import (
 from app.services import enqueue_simulation, estimate_initial_probability, publish_market_event
 
 router = APIRouter(prefix="/api", tags=["probabylon"])
+logger = logging.getLogger(__name__)
 
 CATEGORY_TITLES = {
     "technology": "Technology",
@@ -153,8 +158,21 @@ async def _load_platform_data(db: AsyncSession) -> tuple[list[Market], list[Trad
     agents = list((await db.execute(select(Agent).order_by(desc(Agent.capital)).limit(200))).scalars())
     users = list((await db.execute(select(User).order_by(desc(User.created_at)).limit(200))).scalars())
     proposals = list((await db.execute(select(MarketProposal).order_by(desc(MarketProposal.created_at)).limit(200))).scalars())
-    forecasts = list((await db.execute(select(ForecastQuery).order_by(desc(ForecastQuery.created_at)).limit(200))).scalars())
+    forecasts = await _load_forecasts_safe(db)
     return markets, trades, agents, users, proposals, forecasts
+
+
+async def _load_forecasts_safe(db: AsyncSession, *, user_id: str | None = None, limit: int = 200) -> list[ForecastQuery]:
+    query = select(ForecastQuery)
+    if user_id is not None:
+        query = query.where(ForecastQuery.user_id == user_id)
+    query = query.order_by(desc(ForecastQuery.created_at)).limit(limit)
+    try:
+        return list((await db.execute(query)).scalars())
+    except ProgrammingError:
+        logger.warning("Forecast queries schema is not fully aligned yet; returning no forecast rows for this request.")
+        await db.rollback()
+        return []
 
 
 def _group_trades_by_market(trades: list[Trade]) -> dict[str, list[Trade]]:
@@ -228,57 +246,6 @@ def _market_health(markets: list[dict], agents: list[Agent], trades: list[Trade]
         "live_simulations": len([market for market in markets if market["status"] == "running"]),
         "total_predictions": len(trades),
         "active_agents": len(agents),
-    }
-
-
-async def _forecast_result(question: str, category: str, context: str, markets: list[Market], agents: list[Agent]) -> dict:
-    base_probability = await estimate_initial_probability(question, context, f"Binary forecast for category {category}")
-    related_markets = []
-    keywords = set(re.findall(r"[a-zA-Z]{4,}", f"{question} {context}".lower()))
-    for market in markets:
-        haystack = f"{market.question} {market.description} {market.category}".lower()
-        score = sum(1 for keyword in keywords if keyword in haystack)
-        if score:
-            related_markets.append((score, market))
-    related_markets = [market for _, market in sorted(related_markets, key=lambda item: item[0], reverse=True)[:4]]
-    related_ids = [market.id for market in related_markets]
-    disagreement = min(0.42, 0.12 + abs(base_probability - 0.5) * 0.35 + (0.04 if "ai" in category.lower() else 0.1))
-    confidence = min(0.94, max(0.18, 1.0 - disagreement))
-    drivers = [
-        "Base rates remain uncertain and depend on framing.",
-        "Recent market analogs suggest ongoing repricing pressure.",
-        "Agent confidence rises when evidence is concrete and measurable.",
-    ]
-    evidence = [
-        {
-            "title": market.question,
-            "snippet": market.description[:180] or "Related public market on the platform.",
-            "market_id": market.id,
-        }
-        for market in related_markets
-    ]
-    agent_views = []
-    for index, agent in enumerate(agents[:4]):
-        offset = (-0.08 + index * 0.05)
-        agent_probability = min(0.95, max(0.05, base_probability + offset))
-        agent_views.append(
-            {
-                "agent_id": agent.id,
-                "persona": agent.persona,
-                "probability": round(agent_probability, 3),
-                "stance": "bullish" if agent_probability >= 0.5 else "bearish",
-                "summary": _risk_style(agent),
-            }
-        )
-    return {
-        "probability": round(base_probability, 3),
-        "confidence": round(confidence, 3),
-        "summary": "The agent collective sees a plausible but contested path, with probability shaped by comparable market analogs and category-specific uncertainty.",
-        "key_uncertainty_drivers": drivers,
-        "disagreement_summary": "Agents are directionally aligned but differ on timing, catalysts, and evidence quality.",
-        "supporting_evidence": evidence,
-        "related_market_ids": related_ids,
-        "agent_views": agent_views,
     }
 
 
@@ -572,36 +539,80 @@ async def trends_snapshot(db: AsyncSession = Depends(get_db)) -> dict:
     }
 
 
-@router.post("/forecasts/ask")
+@router.post("/forecasts/ask", response_model=ForecastResult)
 async def ask_forecast(
     payload: ForecastAsk,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> ForecastResult:
     markets, _, agents, _, _, _ = await _load_platform_data(db)
-    result = await _forecast_result(payload.question, _slugify(payload.category), payload.context, markets, agents)
+    keywords = set(re.findall(r"[a-zA-Z]{4,}", f"{payload.question} {payload.context}".lower()))
+    related_ranked = []
+    for market in markets:
+        haystack = f"{market.question} {market.description} {market.category}".lower()
+        score = sum(1 for keyword in keywords if keyword in haystack)
+        if score:
+            related_ranked.append((score, market))
+    related_markets = [market for _, market in sorted(related_ranked, key=lambda item: item[0], reverse=True)[:5]]
+    result = await generate_structured_forecast(
+        payload.question,
+        _slugify(payload.category),
+        payload.context,
+        related_markets,
+        agents,
+    )
     query = ForecastQuery(
         user_id=user.id,
         question=payload.question,
         category=_slugify(payload.category),
-        probability=result["probability"],
-        confidence=result["confidence"],
-        summary=result["summary"],
-        key_uncertainty_drivers=result["key_uncertainty_drivers"],
-        disagreement_summary=result["disagreement_summary"],
-        supporting_evidence=result["supporting_evidence"],
-        related_market_ids=result["related_market_ids"],
+        probability=result.probability,
+        confidence=result.confidence_score,
+        summary=result.summary,
+        key_uncertainty_drivers=result.supporting_evidence,
+        disagreement_summary="; ".join(result.contradictory_signals[:3]),
+        supporting_evidence=[item.model_dump() for item in result.data_sources_used],
+        related_market_ids=[market.id for market in related_markets],
+        agent_reasoning=[item.model_dump() for item in result.agent_reasoning],
+        contradictory_signals=result.contradictory_signals,
+        sources_used=[item.model_dump() for item in result.data_sources_used],
+        model_version=result.model_version,
+        prompt_payload={"question": payload.question, "category": payload.category, "context": payload.context},
+        structured_output=result.model_dump(),
     )
     db.add(query)
     await db.commit()
     await db.refresh(query)
-    result["id"] = query.id
-    result["related_markets"] = [
-        _market_card(market, [])
-        for market in markets
-        if market.id in result["related_market_ids"]
-    ][:4]
+    result.id = query.id
     return result
+
+
+@router.post("/analysis/forecast", response_model=ForecastResult)
+async def analysis_forecast(
+    payload: ForecastAsk,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ForecastResult:
+    return await ask_forecast(payload, user, db)
+
+
+@router.get("/analysis/history")
+async def analysis_history(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:
+    rows = await _load_forecasts_safe(db, user_id=user.id, limit=25)
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "question": row.question,
+                "category": row.category,
+                "probability": row.probability,
+                "confidence_score": row.confidence,
+                "summary": row.summary,
+                "timestamp": row.created_at.isoformat(),
+                "model_version": row.model_version,
+            }
+            for row in rows
+        ]
+    }
 
 
 @router.post("/market-proposals")
@@ -664,13 +675,7 @@ async def my_profile(user: User = Depends(get_current_user), db: AsyncSession = 
             )
         ).scalars()
     )
-    forecasts = list(
-        (
-            await db.execute(
-                select(ForecastQuery).where(ForecastQuery.user_id == user.id).order_by(desc(ForecastQuery.created_at))
-            )
-        ).scalars()
-    )
+    forecasts = await _load_forecasts_safe(db, user_id=user.id, limit=200)
     return {
         "user": {
             "id": user.id,
@@ -711,6 +716,11 @@ async def my_profile(user: User = Depends(get_current_user), db: AsyncSession = 
             for forecast in forecasts[:8]
         ],
     }
+
+
+@router.get("/users/me")
+async def my_user_profile(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:
+    return await my_profile(user, db)
 
 
 @router.patch("/markets/{market_id}/feature")

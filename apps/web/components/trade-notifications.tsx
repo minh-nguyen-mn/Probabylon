@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useAppStore } from "../lib/store";
 
 function directionLabel(direction: "bullish" | "bearish") {
-  return direction === "bullish" ? "Mua YES" : "Ban YES";
+  return direction === "bullish" ? "Buying YES" : "Selling YES";
 }
 
 export function TradeNotifications() {
@@ -44,7 +44,7 @@ export function TradeNotifications() {
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-semibold">{notification.agent_title} vừa đầu tư</div>
+              <div className="font-semibold">{notification.agent_title} just traded</div>
               <div className="mt-1 text-xs opacity-80">
                 {directionLabel(notification.direction)} | {(notification.probability * 100).toFixed(1)}%
               </div>
@@ -58,7 +58,7 @@ export function TradeNotifications() {
             </button>
           </div>
           <div className="mt-2 text-xs opacity-75">
-            {notification.market_question || notification.market_id} | vốn {notification.spend.toFixed(2)}
+            {notification.market_question || notification.market_id} | spend {notification.spend.toFixed(2)}
           </div>
         </div>
       ))}

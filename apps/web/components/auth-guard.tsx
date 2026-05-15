@@ -9,7 +9,7 @@ export function AuthGuard({ children, requireAdmin = false }: { children: React.
   const router = useRouter();
 
   useEffect(() => {
-    hydrate();
+    void hydrate();
   }, [hydrate]);
 
   useEffect(() => {

@@ -29,7 +29,7 @@ function SubmitContent() {
       setStatus(result.message);
       form.reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể gửi đề xuất");
+      setError(err instanceof Error ? err.message : "Unable to submit the market proposal.");
     } finally {
       setLoading(false);
     }
@@ -39,20 +39,20 @@ function SubmitContent() {
     <main className="min-h-screen bg-zinc-950 p-4 text-zinc-100 md:p-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <SectionHeader
-          eyebrow="Danh sách kiểm duyệt"
-          title="Gửi đề xuất thị trường công khai"
-          description="Các thị trường do cộng đồng đề xuất sẽ đi vào hàng chờ kiểm duyệt. Quản trị viên có thể duyệt, chỉnh sửa, gộp trùng, từ chối hoặc lưu trữ trước khi công khai."
+          eyebrow="Moderation queue"
+          title="Submit a public market"
+          description="Community-submitted markets enter a review queue where admins can approve, revise, merge duplicates, reject, or archive them before publication."
         />
         <form onSubmit={onSubmit} className="grid gap-4 rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-          <input name="question" required placeholder="Câu hỏi thị trường" className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+          <input name="question" required placeholder="Market question" className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
           <div className="grid gap-4 md:grid-cols-2">
-            <input name="category" required placeholder="Chủ đề" className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+            <input name="category" required placeholder="Category" className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
             <input name="expires_at" type="datetime-local" required className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
           </div>
-          <textarea name="description" required placeholder="Vì sao thị trường này nên tồn tại?" className="min-h-28 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
-          <textarea name="resolution_criteria" required placeholder="Tiêu chí xác định kết quả của thị trường là gì?" className="min-h-28 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+          <textarea name="description" required placeholder="Why should this market exist?" className="min-h-28 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+          <textarea name="resolution_criteria" required placeholder="What are the exact resolution rules for this market?" className="min-h-28 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
           <button disabled={loading} className="rounded-full bg-emerald-400 px-5 py-3 font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-60">
-            {loading ? "Đang gửi..." : "Gửi để kiểm duyệt"}
+            {loading ? "Submitting..." : "Submit for review"}
           </button>
           {status ? <div className="text-sm text-emerald-300">{status}</div> : null}
           {error ? <div className="text-sm text-red-300">{error}</div> : null}
