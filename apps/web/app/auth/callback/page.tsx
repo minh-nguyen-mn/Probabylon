@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 "use client";
 
 import { useEffect } from "react";
@@ -12,6 +14,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const status = params.get("status");
+
     if (status !== "success") {
       router.replace("/login?oauth=error");
       return;
