@@ -1,13 +1,11 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuthStore } from "../../../lib/auth-store";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const hydrate = useAuthStore((state) => state.hydrate);
@@ -29,5 +27,19 @@ export default function AuthCallbackPage() {
     <main className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-300">
       Completing sign-in...
     </main>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-300">
+          Loading...
+        </main>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
