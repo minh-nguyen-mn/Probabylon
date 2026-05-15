@@ -14,7 +14,7 @@ function HomeContent() {
   useEffect(() => {
     getHomeSnapshot()
       .then(setPayload)
-      .catch((err) => setError(err instanceof Error ? err.message : "Không thể tải trang chủ"));
+      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load the home dashboard."));
   }, []);
 
   if (error) {
@@ -22,7 +22,7 @@ function HomeContent() {
   }
 
   if (!payload) {
-    return <main className="min-h-screen bg-zinc-950 p-6 text-zinc-300">Đang tải dữ liệu nền tảng...</main>;
+    return <main className="min-h-screen bg-zinc-950 p-6 text-zinc-300">Loading platform data...</main>;
   }
 
   return (
@@ -30,41 +30,41 @@ function HomeContent() {
       <div className="mx-auto max-w-7xl space-y-8">
         <section className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/60 p-6">
-            <p className="text-xs uppercase tracking-[0.28em] text-emerald-300/80">Hệ sinh thái trí tuệ tập thể</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-emerald-300/80">Collective intelligence network</p>
             <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-tight md:text-5xl">
-              Probabylon biến niềm tin của AI và con người thành một lớp dự báo sống động cho tương lai.
+              Probabylon turns human and AI beliefs into a live probability layer for the future.
             </h1>
             <p className="mt-4 max-w-3xl text-base text-zinc-400">
-              Khám phá các thị trường công khai, gửi đề xuất để chờ duyệt, hoặc đặt một câu hỏi dự báo riêng tư và nhận kết quả tổng hợp từ nhiều tác nhân AI.
+              Explore public markets, submit new ones for moderation, or ask a private forecasting question and receive a structured synthesis from multiple AI agents.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/ask" className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300">Hỏi AI dự báo</a>
-              <a href="/submit" className="rounded-full border border-zinc-700 px-5 py-3 text-sm text-zinc-200 transition hover:border-zinc-500">Gửi đề xuất thị trường</a>
-              <a href="/markets" className="rounded-full border border-zinc-700 px-5 py-3 text-sm text-zinc-200 transition hover:border-zinc-500">Khám phá thị trường</a>
+              <a href="/ask" className="rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300">Ask for a forecast</a>
+              <a href="/submit" className="rounded-full border border-zinc-700 px-5 py-3 text-sm text-zinc-200 transition hover:border-zinc-500">Submit a market</a>
+              <a href="/markets" className="rounded-full border border-zinc-700 px-5 py-3 text-sm text-zinc-200 transition hover:border-zinc-500">Explore markets</a>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <StatCard label="Tổng thị trường" value={String(payload.system_stats.total_markets)} tone="emerald" hint="Số thị trường công khai hiện có" />
-            <StatCard label="Mô phỏng đang chạy" value={String(payload.system_stats.live_simulations)} tone="cyan" hint="Các thị trường đang được tác nhân AI định giá lại" />
-            <StatCard label="Đề xuất chờ duyệt" value={String(payload.system_stats.pending_submissions || 0)} tone="amber" hint="Đề xuất cộng đồng đang chờ kiểm duyệt" />
+            <StatCard label="Total markets" value={String(payload.system_stats.total_markets)} tone="emerald" hint="Current public prediction markets" />
+            <StatCard label="Live simulations" value={String(payload.system_stats.live_simulations)} tone="cyan" hint="Markets currently being repriced by agent activity" />
+            <StatCard label="Pending submissions" value={String(payload.system_stats.pending_submissions || 0)} tone="amber" hint="Community markets waiting for review" />
           </div>
         </section>
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Thị trường hoạt động" value={String(payload.system_stats.active_markets)} hint="Đang mở hoặc đang chạy" />
-          <StatCard label="Thị trường đã kết thúc" value={String(payload.system_stats.resolved_markets)} hint="Dữ liệu lịch sử phục vụ hiệu chỉnh" />
-          <StatCard label="Tổng khối lượng" value={payload.system_stats.total_volume.toFixed(1)} hint="Tổng chi tiêu giao dịch mô phỏng" />
-          <StatCard label="Chỉ số bất định" value={`${payload.sentiment_overview.uncertainty_index.toFixed(1)}`} hint="Mức biến động và bất đồng toàn nền tảng" />
+          <StatCard label="Active markets" value={String(payload.system_stats.active_markets)} hint="Open or actively running markets" />
+          <StatCard label="Resolved markets" value={String(payload.system_stats.resolved_markets)} hint="Historical calibration and archival data" />
+          <StatCard label="Total volume" value={payload.system_stats.total_volume.toFixed(1)} hint="Aggregate simulated trading spend" />
+          <StatCard label="Uncertainty index" value={`${payload.sentiment_overview.uncertainty_index.toFixed(1)}`} hint="Cross-platform disagreement and volatility" />
         </section>
 
         <section className="space-y-4">
           <SectionHeader
-            eyebrow="Nhịp đập"
-            title="Thị trường nổi bật và đang nóng"
-            description="Những câu hỏi có xác suất biến động mạnh, câu chuyện nổi bật và tín hiệu cao nhất trên nền tảng."
+            eyebrow="Pulse"
+            title="Featured and trending markets"
+            description="These are the questions with the strongest current activity, narrative movement, and decision-making signal."
             href="/markets"
-            cta="Mở thị trường"
+            cta="Open markets"
           />
           <div className="grid gap-4 xl:grid-cols-2">
             {payload.featured_markets.slice(0, 4).map((market) => (
@@ -75,7 +75,7 @@ function HomeContent() {
 
         <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
-            <SectionHeader eyebrow="Khám phá" title="Bản đồ chủ đề" description="Duyệt các lĩnh vực mà hệ sinh thái đang hoạt động mạnh, bất đồng lớn và có niềm tin cao." />
+            <SectionHeader eyebrow="Explore" title="Category map" description="Browse the domains where the ecosystem is most active, most divided, or most confident." />
             <div className="grid gap-3 md:grid-cols-2">
               {payload.categories.slice(0, 6).map((category) => (
                 <CategoryCard key={category.slug} category={category} />
@@ -88,7 +88,7 @@ function HomeContent() {
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <SectionHeader eyebrow="Câu chuyện" title="Niềm tin đang hình thành" description="Những điều hệ sinh thái đang tin, lo ngại hoặc tranh luận mạnh nhất." />
+            <SectionHeader eyebrow="Narratives" title="Beliefs taking shape" description="The strongest themes, anxieties, and directional stories emerging from the market network." />
             <div className="mt-4 flex flex-wrap gap-2">
               {payload.emerging_narratives.map((narrative) => (
                 <span key={narrative} className="rounded-full border border-zinc-700 bg-zinc-950/80 px-3 py-2 text-sm text-zinc-200">
@@ -104,7 +104,7 @@ function HomeContent() {
           </div>
 
           <div className="space-y-4">
-            <SectionHeader eyebrow="Tác nhân" title="Các tác nhân AI nổi bật" description="Những tác nhân tín hiệu cao nhất theo vốn, độ hiệu chỉnh và chuyên môn." href="/agents" cta="Xem tất cả" />
+            <SectionHeader eyebrow="Agents" title="Leading AI agents" description="The highest-signal agents by capital, calibration, and specialization." href="/agents" cta="View all" />
             <div className="space-y-3">
               {payload.top_agents.slice(0, 4).map((agent) => (
                 <AgentMiniCard key={agent.id} agent={agent} />
@@ -115,7 +115,7 @@ function HomeContent() {
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <SectionHeader eyebrow="Hoạt động" title="Dòng dự báo gần đây" description="Các dự báo và giao dịch mới nhất vừa diễn ra trên nền tảng." />
+            <SectionHeader eyebrow="Activity" title="Recent trade flow" description="The latest pricing moves and rationale snippets entering the network." />
             <div className="mt-4 space-y-3">
               {payload.live_activity.slice(0, 8).map((trade) => (
                 <div key={`${trade.market_id}-${trade.id}-${trade.created_at}`} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3">
@@ -124,7 +124,7 @@ function HomeContent() {
                     <span>{new Date(trade.created_at).toLocaleString()}</span>
                   </div>
                   <div className="mt-2 text-sm text-zinc-200">
-                    Xác suất thay đổi từ {(trade.pre_probability * 100).toFixed(1)}% lên {(trade.post_probability * 100).toFixed(1)}%.
+                    Probability moved from {(trade.pre_probability * 100).toFixed(1)}% to {(trade.post_probability * 100).toFixed(1)}%.
                   </div>
                   <div className="mt-2 text-xs text-zinc-400">{trade.rationale}</div>
                 </div>
@@ -133,7 +133,7 @@ function HomeContent() {
           </div>
 
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <SectionHeader eyebrow="Dự báo riêng tư" title="Các câu hỏi gần đây cho AI" description="Người dùng có thể hỏi về tương lai mà không cần tạo thị trường công khai." href="/ask" cta="Mở trang hỏi AI" />
+            <SectionHeader eyebrow="Private forecasts" title="Recent forecast requests" description="Users can investigate the future without opening a public market." href="/ask" cta="Open forecast page" />
             <div className="mt-4 space-y-3">
               {payload.recent_forecasts.map((forecast) => (
                 <div key={forecast.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
@@ -141,7 +141,7 @@ function HomeContent() {
                     <div className="text-sm font-medium text-white">{forecast.question}</div>
                     <div className="text-sm text-emerald-300">{Math.round(forecast.probability * 100)}%</div>
                   </div>
-                  <div className="mt-2 text-xs text-zinc-500">{forecast.category} | độ tin cậy {Math.round(forecast.confidence * 100)}%</div>
+                  <div className="mt-2 text-xs text-zinc-500">{forecast.category} | confidence {Math.round(forecast.confidence * 100)}%</div>
                 </div>
               ))}
             </div>

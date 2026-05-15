@@ -1,74 +1,111 @@
 "use client";
 
 import { create } from "zustand";
-import { AuthUser, apiGetMe } from "./auth-api";
+
+import { apiGetMe, apiLogout, apiUpdatePreferences, AuthStatus, AuthUser, UserPreference } from "./auth-api";
 
 type AuthState = {
   user: AuthUser | null;
-  token: string | null;
+  preference: UserPreference;
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  setAuth: (token: string, user: AuthUser) => void;
-  logout: () => void;
+  setAuthStatus: (status: AuthStatus) => void;
+  logout: () => Promise<void>;
   hydrate: () => Promise<void>;
+  setLanguage: (language: "en" | "vi") => Promise<void>;
 };
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+const defaultPreference: UserPreference = {
+  language: "en",
+  timezone: "UTC",
+};
+
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
+  preference: defaultPreference,
   isLoading: true,
   isAuthenticated: false,
   isAdmin: false,
 
-  setAuth: (token, user) => {
+  setAuthStatus: (status) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("pb_token", token);
+      localStorage.setItem("pb_language", status.preference.language);
     }
     set({
-      token,
-      user,
+      user: status.user,
+      preference: status.preference,
       isAuthenticated: true,
-      isAdmin: user.role === "admin",
+      isAdmin: status.user.role === "admin",
       isLoading: false,
     });
   },
 
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("pb_token");
+  logout: async () => {
+    try {
+      await apiLogout();
+    } finally {
+      set({
+        user: null,
+        preference: {
+          ...defaultPreference,
+          language: typeof window !== "undefined" ? ((localStorage.getItem("pb_language") as "en" | "vi") || "en") : "en",
+        },
+        isAuthenticated: false,
+        isAdmin: false,
+        isLoading: false,
+      });
     }
-    set({
-      token: null,
-      user: null,
-      isAuthenticated: false,
-      isAdmin: false,
-      isLoading: false,
-    });
   },
 
   hydrate: async () => {
-    if (typeof window === "undefined") {
-      set({ isLoading: false });
-      return;
-    }
-    const token = localStorage.getItem("pb_token");
-    if (!token) {
-      set({ isLoading: false });
-      return;
-    }
     try {
-      const user = await apiGetMe();
+      const status = await apiGetMe();
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pb_language", status.preference.language);
+      }
       set({
-        token,
-        user,
+        user: status.user,
+        preference: status.preference,
         isAuthenticated: true,
-        isAdmin: user.role === "admin",
+        isAdmin: status.user.role === "admin",
         isLoading: false,
       });
     } catch {
-      localStorage.removeItem("pb_token");
-      set({ isLoading: false });
+      set({
+        user: null,
+        preference: {
+          ...defaultPreference,
+          language: typeof window !== "undefined" ? ((localStorage.getItem("pb_language") as "en" | "vi") || "en") : "en",
+        },
+        isAuthenticated: false,
+        isAdmin: false,
+        isLoading: false,
+      });
+    }
+  },
+
+  setLanguage: async (language) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pb_language", language);
+    }
+    set((state) => ({
+      preference: {
+        ...state.preference,
+        language,
+      },
+    }));
+    try {
+      const status = await apiUpdatePreferences({ language });
+      set({
+        user: status.user,
+        preference: status.preference,
+        isAuthenticated: true,
+        isAdmin: status.user.role === "admin",
+        isLoading: false,
+      });
+    } catch {
+      return;
     }
   },
 }));

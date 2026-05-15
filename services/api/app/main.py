@@ -1,159 +1,144 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import logging
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import redis.asyncio as redis
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from fastapi.responses import JSONResponse
+from sqlalchemy import select, text
 
-from app.api.routes import router
-from app.api.auth_routes import auth_router
 from app.api.admin_routes import admin_router
+from app.api.auth_routes import auth_router
+from app.api.routes import router
+from app.core.auth import hash_password, utcnow_naive
 from app.core.config import settings
-from app.db.session import engine
+from app.core.logging import configure_logging
+from app.db.models import AuditLog, User
+from app.db.session import SessionLocal
 
-app = FastAPI(title=settings.app_name)
+logger = logging.getLogger(__name__)
+
+
+ADMIN_SEED_USERS = (
+    {
+        "email": "admin@probabylon.ai",
+        "username": "probabylon_admin",
+        "name": "Probabylon Admin",
+        "password": "Admin123!Secure",
+    },
+    {
+        "email": "admin@gmail.com",
+        "username": "admin",
+        "name": "Primary Admin",
+        "password": "admin",
+    },
+)
+
+
+async def seed_admin_account() -> None:
+    async with SessionLocal() as session:
+        for admin_seed in ADMIN_SEED_USERS:
+            password_hash = hash_password(admin_seed["password"])
+            result = await session.execute(select(User).where(User.email == admin_seed["email"]))
+            user = result.scalar_one_or_none()
+            if user:
+                user.username = admin_seed["username"]
+                user.password_hash = password_hash
+                user.name = admin_seed["name"]
+                user.role = "admin"
+                user.is_active = True
+                user.updated_at = utcnow_naive()
+            else:
+                session.add(
+                    User(
+                        email=admin_seed["email"],
+                        username=admin_seed["username"],
+                        password_hash=password_hash,
+                        name=admin_seed["name"],
+                        role="admin",
+                        is_active=True,
+                    )
+                )
+            session.add(
+                AuditLog(
+                    user_id=None,
+                    action="system.seed_admin",
+                    resource_type="auth",
+                    metadata_json={"email": admin_seed["email"], "username": admin_seed["username"]},
+                )
+            )
+        await session.commit()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    configure_logging(settings.log_level)
+    await seed_admin_account()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 app.include_router(router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 
 
-@app.on_event("startup")
-async def ensure_runtime_schema() -> None:
-    statements = [
-        "ALTER TABLE markets ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-        "ALTER TABLE markets ADD COLUMN IF NOT EXISTS source VARCHAR(30) DEFAULT 'admin'",
-        "ALTER TABLE markets ADD COLUMN IF NOT EXISTS created_by_user_id VARCHAR(36)",
-        "ALTER TABLE markets ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false",
-        "ALTER TABLE markets ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false",
-        "UPDATE markets SET expires_at = COALESCE(expires_at, NOW() + INTERVAL '30 days')",
-        "ALTER TABLE markets ALTER COLUMN expires_at SET NOT NULL",
-        "ALTER TABLE trades ADD COLUMN IF NOT EXISTS estimated_probability DOUBLE PRECISION DEFAULT 0.5",
-        "ALTER TABLE trades ADD COLUMN IF NOT EXISTS shares_delta DOUBLE PRECISION DEFAULT 0.0",
-        "ALTER TABLE trades ADD COLUMN IF NOT EXISTS round_index INTEGER DEFAULT 1",
-        """
-        CREATE TABLE IF NOT EXISTS market_proposals (
-            id VARCHAR(36) PRIMARY KEY,
-            user_id VARCHAR(36),
-            question VARCHAR(500) NOT NULL,
-            description TEXT DEFAULT '',
-            resolution_criteria TEXT NOT NULL,
-            category VARCHAR(120) DEFAULT 'general',
-            expires_at TIMESTAMP NOT NULL,
-            status VARCHAR(40) DEFAULT 'pending_review',
-            moderation_notes TEXT DEFAULT '',
-            duplicate_of_market_id VARCHAR(36),
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        )
-        """,
-        "CREATE INDEX IF NOT EXISTS ix_market_proposals_user_id ON market_proposals(user_id)",
-        "CREATE INDEX IF NOT EXISTS ix_market_proposals_status ON market_proposals(status)",
-        """
-        CREATE TABLE IF NOT EXISTS forecast_queries (
-            id VARCHAR(36) PRIMARY KEY,
-            user_id VARCHAR(36),
-            question VARCHAR(500) NOT NULL,
-            category VARCHAR(120) DEFAULT 'general',
-            probability DOUBLE PRECISION DEFAULT 0.5,
-            confidence DOUBLE PRECISION DEFAULT 0.5,
-            summary TEXT DEFAULT '',
-            key_uncertainty_drivers JSONB DEFAULT '[]'::jsonb,
-            disagreement_summary TEXT DEFAULT '',
-            supporting_evidence JSONB DEFAULT '[]'::jsonb,
-            related_market_ids JSONB DEFAULT '[]'::jsonb,
-            created_at TIMESTAMP DEFAULT NOW()
-        )
-        """,
-        "CREATE INDEX IF NOT EXISTS ix_forecast_queries_user_id ON forecast_queries(user_id)",
-    ]
-    async with engine.begin() as conn:
-        for statement in statements:
-            await conn.execute(text(statement))
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id", str(uuid4()))
+    response = await call_next(request)
+    response.headers["x-request-id"] = request_id
+    return response
 
 
-@app.on_event("startup")
-async def seed_admin_account() -> None:
-    """Ensure a fixed development admin account always exists."""
-    from app.core.auth import hash_password
-
-    admin_email = "admin@gmail.com"
-    admin_username = "admin"
-    admin_password_hash = hash_password("admin")
-
-    async with engine.begin() as conn:
-        row = await conn.execute(
-            text(
-                """
-                SELECT id, email, username
-                FROM users
-                WHERE email = :email OR username = :username
-                ORDER BY CASE
-                    WHEN email = :email THEN 0
-                    WHEN username = :username THEN 1
-                    ELSE 2
-                END
-                LIMIT 1
-                """
-            ),
-            {"email": admin_email, "username": admin_username},
-        )
-        admin = row.mappings().first()
-
-        if admin:
-            await conn.execute(
-                text(
-                    """
-                    UPDATE users
-                    SET username = :username,
-                        email = :email,
-                        password_hash = :password_hash,
-                        name = 'Administrator',
-                        role = 'admin',
-                        is_active = true,
-                        updated_at = NOW()
-                    WHERE id = :uid
-                    """
-                ),
-                {
-                    "uid": admin["id"],
-                    "email": admin_email,
-                    "username": admin_username,
-                    "password_hash": admin_password_hash,
-                },
-            )
-        else:
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO users (
-                        id, email, username, password_hash, name, role, is_active, created_at, updated_at
-                    ) VALUES (
-                        :id, :email, :username, :password_hash, 'Administrator', 'admin', true, NOW(), NOW()
-                    )
-                    """
-                ),
-                {
-                    "id": str(uuid4()),
-                    "email": admin_email,
-                    "username": admin_username,
-                    "password_hash": admin_password_hash,
-                },
-            )
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled application error", exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-@app.get("/healthz")
-async def healthz() -> dict:
-    return {"status": "ok"}
+@app.get("/health")
+async def health() -> dict:
+    db_ok = False
+    redis_ok = False
+    db_error = None
+    redis_error = None
+    try:
+        async with SessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception as exc:
+        db_error = str(exc)
+
+    try:
+        client = redis.from_url(settings.redis_url)
+        redis_ok = bool(await client.ping())
+        await client.close()
+    except Exception as exc:
+        redis_ok = False
+        redis_error = str(exc)
+
+    return {
+        "status": "ok" if db_ok and redis_ok else "degraded",
+        "database": db_ok,
+        "redis": redis_ok,
+        "environment": settings.app_env,
+        "errors": {
+            "database": db_error,
+            "redis": redis_error,
+        },
+    }
 
 
 @app.websocket("/ws/markets")
@@ -168,10 +153,11 @@ async def market_stream(websocket: WebSocket) -> None:
             if message and message.get("data"):
                 payload = message["data"].decode() if isinstance(message["data"], bytes) else message["data"]
                 await websocket.send_text(payload)
-            await asyncio.sleep(0.05)
     except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        await websocket.send_text(json.dumps({"type": "error", "detail": str(exc)}))
+    finally:
         await pubsub.unsubscribe("probabylon.market.events")
         await pubsub.close()
         await pubsub_client.close()
-    except Exception as exc:
-        await websocket.send_text(json.dumps({"type": "error", "detail": str(exc)}))

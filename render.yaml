@@ -1,0 +1,84 @@
+services:
+  - type: web
+    name: probabylon-api
+    env: docker
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BROKER_URL
+        sync: false
+      - key: RESULT_BACKEND
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEFAULT_LLM_PROVIDER
+        value: openai
+      - key: DEFAULT_LLM_MODEL
+        value: gpt-4.1-mini
+
+  - type: worker
+    name: probabylon-worker
+    env: docker
+    dockerfilePath: ./services/worker/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BROKER_URL
+        sync: false
+      - key: RESULT_BACKEND
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEFAULT_LLM_PROVIDER
+        value: openai
+      - key: DEFAULT_LLM_MODEL
+        value: gpt-4.1-mini

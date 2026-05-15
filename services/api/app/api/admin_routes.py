@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import require_admin
-from app.db.models import Market, MarketProposal, User
+from app.db.models import ForecastQuery, Market, MarketProposal, User
 from app.db.session import get_db
 from app.schemas.auth import UserRead, UserUpdate
 from app.schemas.market import MarketProposalUpdate
@@ -60,6 +60,10 @@ async def update_user(
     if payload.name is not None:
         user.name = payload.name
     if payload.role is not None:
+        if user.role == "admin" and payload.role != "admin":
+            admin_count = await db.execute(select(func.count()).select_from(User).where(User.role == "admin"))
+            if admin_count.scalar_one() <= 1:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot demote the last admin")
         user.role = payload.role
     if payload.is_active is not None:
         user.is_active = payload.is_active
@@ -85,6 +89,25 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     return {"detail": "User deleted"}
+
+
+@admin_router.get("/analytics")
+async def admin_analytics(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    users_count = (await db.execute(select(func.count()).select_from(User))).scalar_one()
+    admin_count = (await db.execute(select(func.count()).select_from(User).where(User.role == "admin"))).scalar_one()
+    market_count = (await db.execute(select(func.count()).select_from(Market))).scalar_one()
+    proposal_count = (await db.execute(select(func.count()).select_from(MarketProposal))).scalar_one()
+    forecast_count = (await db.execute(select(func.count()).select_from(ForecastQuery))).scalar_one()
+    return {
+        "users": users_count,
+        "admins": admin_count,
+        "markets": market_count,
+        "proposals": proposal_count,
+        "forecasts": forecast_count,
+    }
 
 
 @admin_router.get("/proposals")

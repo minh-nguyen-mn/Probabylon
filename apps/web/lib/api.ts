@@ -8,45 +8,25 @@ import {
   HomeSnapshot,
   InsightsPayload,
   MarketDetailPayload,
-  MarketRow,
   ProfilePayload,
   ProposalRow,
   TrendsPayload,
 } from "./types";
+import { authFetch } from "./auth-api";
+import { getApiBaseUrl } from "./runtime";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const REQUEST_TIMEOUT_MS = 30000;
-
-async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(input, {
-      cache: "no-store",
-      ...init,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Platform request timed out. Please make sure the api service is running.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+function getApiBase(): string {
+  return getApiBaseUrl();
 }
 
 async function parseJsonResponse<T>(res: Response, fallbackMessage: string): Promise<T> {
   const raw = await res.text();
-
   if (!res.ok) {
     throw new Error(raw || fallbackMessage);
   }
-
   if (!raw.trim()) {
     throw new Error(`${fallbackMessage}: empty response body`);
   }
-
   try {
     return JSON.parse(raw) as T;
   } catch {
@@ -54,20 +34,8 @@ async function parseJsonResponse<T>(res: Response, fallbackMessage: string): Pro
   }
 }
 
-function authHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("pb_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function apiFetch<T>(path: string, init?: RequestInit, fallbackMessage: string = "Request failed"): Promise<T> {
-  const res = await fetchWithTimeout(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      ...authHeaders(),
-    },
-  });
+async function apiFetch<T>(path: string, init?: RequestInit, fallbackMessage = "Request failed"): Promise<T> {
+  const res = await authFetch(path, init);
   return parseJsonResponse<T>(res, fallbackMessage);
 }
 
@@ -150,7 +118,7 @@ export async function getMyMarketProposals(): Promise<{ proposals: ProposalRow[]
 
 export async function askForecast(payload: { question: string; category: string; context?: string }): Promise<ForecastResult> {
   return apiFetch<ForecastResult>(
-    "/forecasts/ask",
+    "/analysis/forecast",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,7 +141,7 @@ export async function getTrends(): Promise<TrendsPayload> {
 }
 
 export async function getProfile(): Promise<ProfilePayload> {
-  return apiFetch<ProfilePayload>("/profile/me", undefined, "Failed to load profile");
+  return apiFetch<ProfilePayload>("/users/me", undefined, "Failed to load profile");
 }
 
 export async function featureMarket(
@@ -190,3 +158,5 @@ export async function featureMarket(
     "Failed to update market"
   );
 }
+
+export const API_BASE = getApiBase;

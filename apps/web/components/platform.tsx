@@ -6,13 +6,13 @@ import { AgentRow, CategorySnapshot, MarketRow, UserSummary } from "../lib/types
 
 function statusLabel(status: string) {
   const map: Record<string, string> = {
-    open: "Đang mở",
-    running: "Đang chạy",
-    resolved: "Đã kết thúc",
-    archived: "Đã lưu trữ",
-    approved: "Đã duyệt",
-    rejected: "Đã từ chối",
-    pending_review: "Chờ duyệt",
+    open: "Open",
+    running: "Running",
+    resolved: "Resolved",
+    archived: "Archived",
+    approved: "Approved",
+    rejected: "Rejected",
+    pending_review: "Pending review",
   };
   return map[status] || status;
 }
@@ -87,12 +87,12 @@ export function MarketCard({ market, compact = false }: { market: MarketRow; com
             </span>
             {market.is_featured ? (
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] uppercase tracking-[0.16em] text-amber-300">
-                Nổi bật
+                Featured
               </span>
             ) : null}
             {market.is_pinned ? (
               <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-300">
-                Ghim
+                Pinned
               </span>
             ) : null}
           </div>
@@ -106,11 +106,11 @@ export function MarketCard({ market, compact = false }: { market: MarketRow; com
 
       <div className="mt-5 flex items-end justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Xác suất</div>
+          <div className="text-xs uppercase tracking-[0.18em] text-zinc-500">Probability</div>
           <div className="mt-2 text-4xl font-semibold text-white">{pct}%</div>
         </div>
         <div className={`text-sm ${market.momentum >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-          {market.momentum >= 0 ? "Động lượng tăng" : "Động lượng giảm"} {Math.abs(market.momentum * 100).toFixed(1)} điểm
+          {market.momentum >= 0 ? "Upward momentum" : "Downward momentum"} {Math.abs(market.momentum * 100).toFixed(1)} pts
         </div>
       </div>
 
@@ -120,19 +120,19 @@ export function MarketCard({ market, compact = false }: { market: MarketRow; com
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-zinc-300 md:grid-cols-4">
         <div>
-          <div className="text-zinc-500">Khối lượng</div>
+          <div className="text-zinc-500">Volume</div>
           <div>{market.volume.toFixed(1)}</div>
         </div>
         <div>
-          <div className="text-zinc-500">Biến động</div>
+          <div className="text-zinc-500">Volatility</div>
           <div>{market.volatility.toFixed(3)}</div>
         </div>
         <div>
-          <div className="text-zinc-500">Độ tin cậy</div>
+          <div className="text-zinc-500">Confidence</div>
           <div>{Math.round((market.confidence ?? 0.5) * 100)}%</div>
         </div>
         <div>
-          <div className="text-zinc-500">Hoạt động</div>
+          <div className="text-zinc-500">Activity</div>
           <div>{market.activity ?? 0}</div>
         </div>
       </div>
@@ -155,23 +155,23 @@ export function CategoryCard({ category }: { category: CategorySnapshot }) {
     <Link href={`/categories/${category.slug}`} className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 transition hover:border-cyan-400/50">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-lg font-semibold text-white">{category.name}</h3>
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">{category.market_count} thị trường</span>
+        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">{category.market_count} markets</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
         <div>
-          <div className="text-zinc-500">Tâm lý</div>
+          <div className="text-zinc-500">Sentiment</div>
           <div className="text-zinc-200">{category.sentiment}</div>
         </div>
         <div>
-          <div className="text-zinc-500">Xác suất TB</div>
+          <div className="text-zinc-500">Avg probability</div>
           <div className="text-zinc-200">{(category.avg_probability * 100).toFixed(1)}%</div>
         </div>
         <div>
-          <div className="text-zinc-500">Khối lượng</div>
+          <div className="text-zinc-500">Volume</div>
           <div className="text-zinc-200">{category.volume.toFixed(1)}</div>
         </div>
         <div>
-          <div className="text-zinc-500">Biến động</div>
+          <div className="text-zinc-500">Volatility</div>
           <div className="text-zinc-200">{category.volatility.toFixed(3)}</div>
         </div>
       </div>
@@ -185,14 +185,14 @@ export function AgentMiniCard({ agent }: { agent: AgentRow }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-white">{agent.persona}</h3>
-          <p className="mt-1 text-sm text-zinc-400">{agent.specialization || agent.archetype || "Tác nhân liên thị trường"}</p>
+          <p className="mt-1 text-sm text-zinc-400">{agent.specialization || agent.archetype || "Cross-market agent"}</p>
         </div>
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">{agent.archetype || "Thích ứng"}</span>
+        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">{agent.archetype || "Adaptive"}</span>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-        <Metric label="Vốn" value={agent.capital.toFixed(1)} />
-        <Metric label="Uy tín" value={agent.reputation.toFixed(2)} />
-        <Metric label="Hiệu chỉnh" value={agent.calibration_score.toFixed(2)} />
+        <Metric label="Capital" value={agent.capital.toFixed(1)} />
+        <Metric label="Reputation" value={agent.reputation.toFixed(2)} />
+        <Metric label="Calibration" value={agent.calibration_score.toFixed(2)} />
       </div>
     </div>
   );
@@ -201,7 +201,7 @@ export function AgentMiniCard({ agent }: { agent: AgentRow }) {
 export function UserLeaderboard({ users }: { users: UserSummary[] }) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-      <h3 className="text-lg font-semibold text-white">Người dùng nổi bật</h3>
+      <h3 className="text-lg font-semibold text-white">Top users</h3>
       <div className="mt-4 space-y-3">
         {users.map((user, index) => (
           <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm">
@@ -209,10 +209,10 @@ export function UserLeaderboard({ users }: { users: UserSummary[] }) {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-300">{index + 1}</span>
               <div>
                 <div className="font-medium text-white">{user.name}</div>
-                <div className="text-xs text-zinc-500">{user.submitted_markets} đề xuất | {user.forecast_count} dự báo</div>
+                <div className="text-xs text-zinc-500">{user.submitted_markets} submissions | {user.forecast_count} forecasts</div>
               </div>
             </div>
-            <div className="text-emerald-300">{Math.round(user.reputation * 100)} điểm</div>
+            <div className="text-emerald-300">{Math.round(user.reputation * 100)} pts</div>
           </div>
         ))}
       </div>

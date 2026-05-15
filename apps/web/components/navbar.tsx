@@ -2,29 +2,36 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+
+import { LanguageSwitcher } from "./language-switcher";
+import { useI18n } from "../hooks/use-i18n";
 import { useAuthStore } from "../lib/auth-store";
 import { useAppStore } from "../lib/store";
+import { getWebSocketUrl } from "../lib/runtime";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Trang chủ" },
-  { href: "/markets", label: "Thị trường" },
-  { href: "/categories", label: "Chủ đề" },
-  { href: "/ask", label: "Hỏi AI" },
-  { href: "/submit", label: "Gửi đề xuất" },
-  { href: "/agents", label: "Tác nhân" },
-  { href: "/insights", label: "Phân tích" },
-  { href: "/trends", label: "Xu hướng" },
-];
+function navItems(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    { href: "/", label: t("nav", "home") },
+    { href: "/markets", label: t("nav", "markets") },
+    { href: "/categories", label: t("nav", "categories") },
+    { href: "/ask", label: t("nav", "ask") },
+    { href: "/submit", label: t("nav", "submit") },
+    { href: "/agents", label: t("nav", "agents") },
+    { href: "/insights", label: t("nav", "insights") },
+    { href: "/trends", label: t("nav", "trends") },
+  ];
+}
 
 function Navbar() {
+  const { t } = useI18n();
   const { user, isAuthenticated, isAdmin, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
-  if (!isAuthenticated || pathname === "/login" || pathname === "/register") return null;
+  if (!isAuthenticated || pathname === "/login" || pathname === "/register" || pathname === "/auth/callback") return null;
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.push("/login");
   }
 
@@ -40,12 +47,12 @@ function Navbar() {
             </div>
             <div>
               <div className="text-sm font-semibold">Probabylon</div>
-              <div className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Trí tuệ xác suất</div>
+              <div className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">{t("nav", "probabilityIntelligence")}</div>
             </div>
           </a>
 
           <div className="hidden flex-wrap items-center gap-1 lg:flex">
-            {NAV_ITEMS.map((item) => {
+            {navItems(t).map((item) => {
               const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
               return (
                 <a
@@ -63,13 +70,13 @@ function Navbar() {
               href="/about"
               className={`rounded-full px-3 py-2 text-sm transition ${pathname === "/about" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900 hover:text-white"}`}
             >
-              Giới thiệu
+              {t("nav", "about")}
             </a>
             <a
               href="/contact"
               className={`rounded-full px-3 py-2 text-sm transition ${pathname === "/contact" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900 hover:text-white"}`}
             >
-              Liên hệ
+              {t("nav", "contact")}
             </a>
             {isAdmin ? (
               <a
@@ -78,13 +85,14 @@ function Navbar() {
                   pathname === "/admin" ? "bg-amber-500/15 text-amber-300" : "text-zinc-400 hover:bg-amber-500/10 hover:text-amber-300"
                 }`}
               >
-                Quản trị
+                {t("nav", "admin")}
               </a>
             ) : null}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           {isAdmin ? (
             <a
               href="/admin"
@@ -94,11 +102,11 @@ function Navbar() {
                   : "border-amber-500/20 text-amber-300 hover:bg-amber-500/10"
               }`}
             >
-              Quản trị
+              {t("nav", "admin")}
             </a>
           ) : null}
           <a href="/profile" className="hidden rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-500 md:block">
-            Hồ sơ
+            {t("nav", "profile")}
           </a>
           <div className="hidden items-center gap-3 rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-2 md:flex">
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-xs font-bold text-white">
@@ -106,11 +114,11 @@ function Navbar() {
             </div>
             <div className="min-w-0">
               <div className="max-w-[150px] truncate text-sm text-zinc-200">{user?.name || user?.email}</div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">{isAdmin ? "Quản trị" : "Thành viên"}</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">{isAdmin ? t("nav", "admin") : t("nav", "member")}</div>
             </div>
           </div>
-          <button onClick={handleLogout} className="rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-300 transition hover:border-red-400 hover:text-red-300">
-            Đăng xuất
+          <button onClick={() => void handleLogout()} className="rounded-full border border-zinc-700 px-3 py-2 text-sm text-zinc-300 transition hover:border-red-400 hover:text-red-300">
+            {t("nav", "logout")}
           </button>
         </div>
       </div>
@@ -125,9 +133,9 @@ function GlobalMarketEvents() {
   const setWsState = useAppStore((state) => state.setWsState);
 
   useEffect(() => {
-    if (!isAuthenticated || pathname === "/login" || pathname === "/register") return;
+    if (!isAuthenticated || pathname === "/login" || pathname === "/register" || pathname === "/auth/callback") return;
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/markets";
+    const wsUrl = getWebSocketUrl();
     let disposed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let ws: WebSocket | undefined;
@@ -178,7 +186,7 @@ export function NavbarWrapper({ children }: { children: React.ReactNode }) {
   const { hydrate } = useAuthStore();
 
   useEffect(() => {
-    hydrate();
+    void hydrate();
   }, [hydrate]);
 
   return (

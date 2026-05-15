@@ -164,14 +164,34 @@ export type CategoryDetailPayload = {
 
 export type ForecastResult = {
   id: string;
+  final_prediction: string;
   probability: number;
-  confidence: number;
+  confidence_score: number;
   summary: string;
-  key_uncertainty_drivers: string[];
-  disagreement_summary: string;
-  supporting_evidence: { title: string; snippet: string; market_id?: string }[];
-  related_markets: MarketRow[];
-  agent_views: { agent_id: string; persona: string; probability: number; stance: string; summary: string }[];
+  supporting_evidence: string[];
+  agent_reasoning: {
+    agent: string;
+    stance: string;
+    confidence: number;
+    reasoning: string;
+    supporting_evidence: string[];
+    contradictory_signals: string[];
+  }[];
+  contradictory_signals: string[];
+  data_sources_used: {
+    label: string;
+    source_type: string;
+    status: string;
+    timestamp: string;
+    detail: string;
+  }[];
+  timestamp: string;
+  model_version: string;
+  probability_distribution: {
+    bullish: number;
+    bearish: number;
+  };
+  insufficient_data: boolean;
 };
 
 export type MarketDetailPayload = {

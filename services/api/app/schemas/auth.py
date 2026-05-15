@@ -5,27 +5,14 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserRegister(BaseModel):
     email: EmailStr
-    username: str = Field(min_length=3, max_length=50)
-    password: str = Field(min_length=6, max_length=128)
-    name: str = Field(default="", max_length=255)
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_]+$")
+    password: str = Field(min_length=8, max_length=128)
+    name: str = Field(min_length=1, max_length=255)
 
 
 class UserLogin(BaseModel):
-    email: str = Field(min_length=1, max_length=255)
-    password: str
-
-
-class GoogleAuth(BaseModel):
-    id_token: str
-    username: str | None = None
-    password: str | None = None
-    name: str | None = None
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserRead
+    identifier: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class UserRead(BaseModel):
@@ -43,7 +30,33 @@ class UserRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserPreferenceRead(BaseModel):
+    language: str
+    timezone: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserRead
+
+
+class AuthStatus(BaseModel):
+    user: UserRead
+    preference: UserPreferenceRead
+
+
 class UserUpdate(BaseModel):
-    name: str | None = None
-    role: str | None = None
+    name: str | None = Field(default=None, max_length=255)
+    role: str | None = Field(default=None, pattern=r"^(user|admin)$")
     is_active: bool | None = None
+
+
+class PreferenceUpdate(BaseModel):
+    language: str | None = Field(default=None, pattern=r"^(en|vi)$")
+    timezone: str | None = Field(default=None, max_length=50)
+
+
+class GoogleAuthUrlResponse(BaseModel):
+    authorization_url: str

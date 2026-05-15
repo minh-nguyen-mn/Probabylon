@@ -1,53 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+"use client";
+
+import { getApiBaseUrl } from "./runtime";
+
 const REQUEST_TIMEOUT_MS = 30000;
 
-async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(input, {
-      cache: "no-store",
-      ...init,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Authentication service timed out. Please make sure the web and api services are running.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-function extractErrorMessage(detail: unknown, fallback: string): string {
-  if (typeof detail === "string" && detail.trim()) return detail;
-
-  if (Array.isArray(detail)) {
-    const messages = detail
-      .map((item) => {
-        if (typeof item === "string") return item;
-        if (item && typeof item === "object" && "msg" in item) {
-          return String((item as { msg?: unknown }).msg || "");
-        }
-        return "";
-      })
-      .filter(Boolean);
-
-    if (messages.length) return messages.join(", ");
-  }
-
-  if (detail && typeof detail === "object") {
-    if ("message" in detail && typeof (detail as { message?: unknown }).message === "string") {
-      return (detail as { message: string }).message;
-    }
-
-    if ("code" in detail && typeof (detail as { code?: unknown }).code === "string") {
-      return (detail as { code: string }).code;
-    }
-  }
-
-  return fallback;
+function getAuthApiBase(): string {
+  return getApiBaseUrl();
 }
 
 export type AuthUser = {
@@ -63,114 +21,144 @@ export type AuthUser = {
   updated_at: string;
 };
 
+export type UserPreference = {
+  language: "en" | "vi";
+  timezone: string;
+};
+
+export type AuthStatus = {
+  user: AuthUser;
+  preference: UserPreference;
+};
+
 export type TokenResponse = {
   access_token: string;
   token_type: string;
+  expires_in: number;
   user: AuthUser;
 };
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("pb_token");
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, {
+      cache: "no-store",
+      credentials: "include",
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        ...(init?.headers || {}),
+      },
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
-export function authHeaders(): Record<string, string> {
-  const token = getToken();
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+function extractErrorMessage(payload: any, fallback: string): string {
+  const detail = payload?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail.map((item) => item?.msg).filter(Boolean);
+    if (parts.length) return parts.join(", ");
+  }
+  return fallback;
 }
 
-export async function authFetch(url: string, init?: RequestInit): Promise<Response> {
-  const headers = { ...authHeaders(), ...(init?.headers || {}) };
-  return fetchWithTimeout(url, { ...init, headers });
+export async function authFetch(path: string, init?: RequestInit, retry = true): Promise<Response> {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}${path}`, init);
+  if (response.status === 401 && retry && path !== "/auth/refresh") {
+    const refreshResponse = await fetchWithTimeout(`${getAuthApiBase()}/auth/refresh`, { method: "POST" });
+    if (refreshResponse.ok) {
+      return authFetch(path, init, false);
+    }
+  }
+  return response;
+}
+
+async function parseJson<T>(response: Response, fallback: string): Promise<T> {
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(payload, fallback));
+  }
+  return response.json() as Promise<T>;
 }
 
 export async function apiRegister(email: string, username: string, password: string, name: string): Promise<TokenResponse> {
-  const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, username, password, name }),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(body.detail, "Registration failed"));
-  }
-  return res.json();
+  return parseJson<TokenResponse>(response, "Registration failed");
 }
 
-export async function apiLogin(email: string, password: string): Promise<TokenResponse> {
-  const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
+export async function apiLogin(identifier: string, password: string): Promise<TokenResponse> {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(body.detail, "Login failed"));
-  }
-  return res.json();
+  return parseJson<TokenResponse>(response, "Login failed");
 }
 
-export async function apiGoogleLogin(
-  idToken: string,
-  username?: string,
-  password?: string,
-  name?: string
-): Promise<TokenResponse> {
-  const res = await fetchWithTimeout(`${API_BASE}/auth/google`, {
-    method: "POST",
+export async function apiLogout(): Promise<void> {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/logout`, { method: "POST" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(payload, "Logout failed"));
+  }
+}
+
+export async function apiGetMe(): Promise<AuthStatus> {
+  const response = await authFetch("/auth/me");
+  return parseJson<AuthStatus>(response, "Not authenticated");
+}
+
+export async function apiUpdatePreferences(payload: Partial<UserPreference>): Promise<AuthStatus> {
+  const response = await authFetch("/auth/preferences", {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id_token: idToken, username, password, name }),
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const error = new Error(extractErrorMessage(body.detail, "Google login failed")) as any;
-    error.detail = body.detail;
-    throw error;
-  }
-  return res.json();
+  return parseJson<AuthStatus>(response, "Failed to update preferences");
 }
 
-export async function apiGetMe(): Promise<AuthUser> {
-  const res = await authFetch(`${API_BASE}/auth/me`);
-  if (!res.ok) throw new Error("Not authenticated");
-  return res.json();
+export async function apiGetGoogleAuthUrl(): Promise<string> {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/google`);
+  const payload = await parseJson<{ authorization_url: string }>(response, "Failed to start Google authentication");
+  return payload.authorization_url;
 }
 
-// Admin APIs
 export async function apiFetchUsers(search: string = ""): Promise<AuthUser[]> {
   const q = search ? `?search=${encodeURIComponent(search)}` : "";
-  const res = await authFetch(`${API_BASE}/admin/users${q}`);
-  if (!res.ok) throw new Error("Failed to fetch users");
-  return res.json();
+  const response = await authFetch(`/admin/users${q}`);
+  return parseJson<AuthUser[]>(response, "Failed to fetch users");
 }
 
 export async function apiUpdateUser(userId: string, data: { name?: string; role?: string; is_active?: boolean }): Promise<AuthUser> {
-  const res = await authFetch(`${API_BASE}/admin/users/${userId}`, {
+  const response = await authFetch(`/admin/users/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(body.detail, "Failed to update user"));
-  }
-  return res.json();
+  return parseJson<AuthUser>(response, "Failed to update user");
 }
 
 export async function apiDeleteUser(userId: string): Promise<void> {
-  const res = await authFetch(`${API_BASE}/admin/users/${userId}`, { method: "DELETE" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(body.detail, "Failed to delete user"));
+  const response = await authFetch(`/admin/users/${userId}`, { method: "DELETE" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(payload, "Failed to delete user"));
   }
 }
 
 export async function apiFetchProposals(statusFilter: string = ""): Promise<any[]> {
   const q = statusFilter ? `?status_filter=${encodeURIComponent(statusFilter)}` : "";
-  const res = await authFetch(`${API_BASE}/admin/proposals${q}`);
-  if (!res.ok) throw new Error("Failed to fetch proposals");
-  return res.json();
+  const response = await authFetch(`/admin/proposals${q}`);
+  return parseJson<any[]>(response, "Failed to fetch proposals");
 }
 
 export async function apiModerateProposal(
@@ -182,14 +170,21 @@ export async function apiModerateProposal(
     duplicate_of_market_id?: string;
   }
 ): Promise<{ detail: string; market_id?: string }> {
-  const res = await authFetch(`${API_BASE}/admin/proposals/${proposalId}`, {
+  const response = await authFetch(`/admin/proposals/${proposalId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(body.detail, "Failed to moderate proposal"));
-  }
-  return res.json();
+  return parseJson<{ detail: string; market_id?: string }>(response, "Failed to moderate proposal");
+}
+
+export async function apiAdminAnalytics(): Promise<{
+  users: number;
+  admins: number;
+  markets: number;
+  proposals: number;
+  forecasts: number;
+}> {
+  const response = await authFetch("/admin/analytics");
+  return parseJson(response, "Failed to load admin analytics");
 }
